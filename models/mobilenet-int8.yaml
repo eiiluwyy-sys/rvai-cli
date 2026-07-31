@@ -1,0 +1,15 @@
+name: mobilenet-int8
+display_name: MobileNet INT8
+
+task: image_classification
+format: onnx
+quantization: int8
+runtime: onnxruntime
+
+resources:
+  min_memory_mb: 512
+  recommended_threads: auto
+
+riscv:
+  require_rv64: true
+  prefer_rvv: true

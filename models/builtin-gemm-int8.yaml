@@ -1,0 +1,15 @@
+name: builtin-gemm-int8
+display_name: Builtin INT8 GEMM
+
+task: benchmark
+format: builtin
+quantization: int8
+runtime: builtin
+
+resources:
+  min_memory_mb: 128
+  recommended_threads: auto
+
+riscv:
+  require_rv64: false
+  prefer_rvv: true
