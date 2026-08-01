@@ -1,0 +1,7 @@
+processor   : 0
+vendor_id   : GenuineIntel
+model name  : Example x86_64 CPU
+
+processor   : 1
+vendor_id   : GenuineIntel
+model name  : Example x86_64 CPU
