@@ -29,6 +29,12 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
 
+      - name: Build native workloads
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --parallel
+
       - name: Test
         run: |
+          ctest --test-dir build --output-on-failure
           python -m pytest

@@ -195,6 +195,8 @@ int run_gemm(const Config& config) {
     std::vector<std::int32_t> output(output_elements);
     fill_inputs(lhs, rhs, config);
 
+    // One untimed pass verifies correctness and warms the data/code paths;
+    // it is excluded from the latency samples below.
     gemm_scalar(lhs, rhs, output, config);
     const bool correctness_verified = verify_result(lhs, rhs, output, config);
     if (!correctness_verified) {
@@ -217,11 +219,15 @@ int run_gemm(const Config& config) {
     const double mean_ms =
         std::accumulate(latencies_ms.begin(), latencies_ms.end(), 0.0) /
         static_cast<double>(latencies_ms.size());
+    // Nearest-rank P95 selects ceil(0.95 * N) - 1 after sorting. With the
+    // default N=20, this is zero-based index 18 (the 19th sample).
     std::sort(latencies_ms.begin(), latencies_ms.end());
     const auto p95_index = static_cast<std::size_t>(
         std::ceil(0.95 * static_cast<double>(latencies_ms.size())) - 1.0
     );
     const double p95_ms = latencies_ms[p95_index];
+    // A multiply and an add count as two operations:
+    // GOPS = (2 * M * N * K) / mean_seconds / 1e9.
     const double operations =
         2.0 * static_cast<double>(config.m) * static_cast<double>(config.n) *
         static_cast<double>(config.k);

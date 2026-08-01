@@ -1,8 +1,8 @@
 # RVAI CLI
 
-RVAI CLI 是面向 RISC-V AI workload 的统一命令行入口。V0.1 使用 Python
-实现控制层，负责模型清单校验、模型注册和运行计划生成；高性能 workload
-将在后续版本中使用 C/C++ 实现，并由 CLI 通过 adapter 调用。
+RVAI CLI 是面向 RISC-V AI workload 的统一命令行入口。Python 控制层负责
+模型清单校验、硬件探测、兼容性判断和运行调度；首个原生 workload 使用
+C++ 实现 scalar INT8 GEMM，并由 CLI 通过 adapter 调用。
 
 ## 环境要求
 
@@ -10,6 +10,8 @@ RVAI CLI 是面向 RISC-V AI workload 的统一命令行入口。V0.1 使用 Pyt
 - Typer
 - Pydantic
 - PyYAML
+- CMake 3.16 或更高版本
+- 支持 C++17 的编译器
 - pytest（开发与测试）
 
 ## 安装
@@ -20,19 +22,30 @@ source .venv/bin/activate
 python -m pip install -e ".[dev]"
 ```
 
+构建原生 workload：
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+```
+
 ## 使用
 
 ```bash
 rvai list
 rvai show qwen-small-int4
+rvai detect
+rvai check builtin-gemm-int8
 rvai run qwen-small-int4 --dry-run
+rvai run builtin-gemm-int8
 ```
 
 默认从当前目录的 `models/` 加载 Manifest。也可通过 `RVAI_MODELS_DIR`
 环境变量指定其他模型目录。
 
-V0.1 的 `run` 命令只支持 `--dry-run`，不会启动真实推理或调用尚未实现的
-C/C++ workload。
+`builtin-gemm-int8` 会执行 `build/rvai-bench`，输出正确性、平均与 P95
+延迟、吞吐量及矩阵内存占用的 JSON。若二进制位于其他目录，可通过
+`RVAI_BENCH_BIN` 指定完整路径。其他模型当前仍只支持 `--dry-run`。
 
 `qwen-small-int4` 和 `mobilenet-int8` 当前仅为模型注册条目，仓库中不包含
 对应的 GGUF 或 ONNX 模型文件。运行计划会通过 `requires_model_file` 明确
@@ -41,7 +54,10 @@ C/C++ workload。
 ## 测试
 
 ```bash
-pytest
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+python -m pytest
 ```
 
 详细范围与验收条件参见 [docs/mvp-v0.1.md](docs/mvp-v0.1.md)。
