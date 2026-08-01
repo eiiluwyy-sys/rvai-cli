@@ -46,7 +46,7 @@ class CompatibilityMatcher:
 
     def __init__(
         self,
-        available_adapters: Collection[str] = (),
+        available_adapters: Collection[str] = ("builtin",),
         model_file_exists: Callable[[ModelManifest], bool] | None = None,
     ) -> None:
         self.available_adapters = frozenset(available_adapters)
