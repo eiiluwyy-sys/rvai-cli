@@ -1,7 +1,14 @@
 """Typer entry point for RVAI."""
 
+from pathlib import Path
+
 import typer
 
+from rvai.compatibility import (
+    CompatibilityError,
+    CompatibilityMatcher,
+    load_hardware_profile,
+)
 from rvai.hardware import HardwareProbe, HardwareProbeError
 from rvai.planner import RunPlanner
 from rvai.registry import ModelRegistry, RegistryError
@@ -76,6 +83,30 @@ def detect() -> None:
     except HardwareProbeError as exc:
         _fail(str(exc))
     typer.echo(profile.model_dump_json(indent=2))
+
+
+@app.command("check")
+def check_model(
+    model: str = typer.Argument(..., help="Registered model name."),
+    profile_path: Path | None = typer.Option(
+        None,
+        "--profile",
+        help="Read a Hardware Profile from JSON instead of probing this host.",
+    ),
+) -> None:
+    """Check model compatibility and immediate execution readiness."""
+
+    try:
+        manifest = _registry().get(model)
+        hardware = (
+            load_hardware_profile(profile_path)
+            if profile_path is not None
+            else HardwareProbe().detect()
+        )
+        report = CompatibilityMatcher().check(manifest, hardware)
+    except (CompatibilityError, HardwareProbeError, RegistryError) as exc:
+        _fail(str(exc))
+    typer.echo(report.model_dump_json(indent=2))
 
 
 if __name__ == "__main__":
