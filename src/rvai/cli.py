@@ -4,6 +4,7 @@ from pathlib import Path
 
 import typer
 
+from rvai.adapters import AdapterError, BuiltinAdapter
 from rvai.compatibility import (
     CompatibilityError,
     CompatibilityMatcher,
@@ -61,17 +62,29 @@ def run(
         help="Generate a plan without executing the workload.",
     ),
 ) -> None:
-    """Generate a structured model execution plan."""
-
-    if not dry_run:
-        _fail("RVAI V0.1 only supports 'run' with --dry-run")
+    """Plan or execute a registered workload."""
 
     try:
         manifest = _registry().get(model)
-        plan = RunPlanner().plan(manifest, dry_run=True)
-    except (RegistryError, ValueError) as exc:
+    except RegistryError as exc:
         _fail(str(exc))
-    typer.echo(plan.model_dump_json(indent=2))
+
+    if dry_run:
+        try:
+            plan = RunPlanner().plan(manifest, dry_run=True)
+        except ValueError as exc:
+            _fail(str(exc))
+        typer.echo(plan.model_dump_json(indent=2))
+        return
+
+    if manifest.runtime != "builtin":
+        _fail("Real execution is currently supported only for builtin workloads")
+
+    try:
+        result = BuiltinAdapter().execute(manifest)
+    except AdapterError as exc:
+        _fail(str(exc))
+    typer.echo(result.model_dump_json(indent=2))
 
 
 @app.command()
