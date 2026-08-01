@@ -2,6 +2,7 @@
 
 import typer
 
+from rvai.hardware import HardwareProbe, HardwareProbeError
 from rvai.planner import RunPlanner
 from rvai.registry import ModelRegistry, RegistryError
 
@@ -64,6 +65,17 @@ def run(
     except (RegistryError, ValueError) as exc:
         _fail(str(exc))
     typer.echo(plan.model_dump_json(indent=2))
+
+
+@app.command()
+def detect() -> None:
+    """Detect the current hardware and runtime environment."""
+
+    try:
+        profile = HardwareProbe().detect()
+    except HardwareProbeError as exc:
+        _fail(str(exc))
+    typer.echo(profile.model_dump_json(indent=2))
 
 
 if __name__ == "__main__":
