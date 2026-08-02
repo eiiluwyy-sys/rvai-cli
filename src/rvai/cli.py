@@ -13,6 +13,7 @@ from rvai.compatibility import (
 from rvai.hardware import HardwareProbe, HardwareProbeError
 from rvai.planner import RunPlanner
 from rvai.registry import ModelRegistry, RegistryError
+from rvai.targets import TargetName, create_target
 
 app = typer.Typer(
     name="rvai",
@@ -61,6 +62,11 @@ def run(
         "--dry-run",
         help="Generate a plan without executing the workload.",
     ),
+    target: TargetName = typer.Option(
+        TargetName.NATIVE,
+        "--target",
+        help="Execution target for real runs or dry-run plans.",
+    ),
 ) -> None:
     """Plan or execute a registered workload."""
 
@@ -71,7 +77,11 @@ def run(
 
     if dry_run:
         try:
-            plan = RunPlanner().plan(manifest, dry_run=True)
+            plan = RunPlanner().plan(
+                manifest,
+                dry_run=True,
+                target=target.value,
+            )
         except ValueError as exc:
             _fail(str(exc))
         typer.echo(plan.model_dump_json(indent=2))
@@ -81,7 +91,8 @@ def run(
         _fail("Real execution is currently supported only for builtin workloads")
 
     try:
-        result = BuiltinAdapter().execute(manifest)
+        execution_target = create_target(target)
+        result = BuiltinAdapter().execute(manifest, target=execution_target)
     except AdapterError as exc:
         _fail(str(exc))
     typer.echo(result.model_dump_json(indent=2))

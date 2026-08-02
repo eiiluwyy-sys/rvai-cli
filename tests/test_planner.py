@@ -16,6 +16,7 @@ def test_planner_builds_structured_dry_run() -> None:
 
     assert plan.model == "builtin-gemm-int8"
     assert plan.runtime == "builtin"
+    assert plan.target == "native"
     assert plan.task == "benchmark"
     assert plan.resources["min_memory_mb"] == 128
     assert plan.requires_model_file is False
