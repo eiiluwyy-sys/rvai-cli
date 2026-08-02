@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include "execution_info.h"
+
 namespace {
 
 struct Config {
@@ -159,11 +161,23 @@ void print_result(
     std::size_t input_bytes,
     std::size_t output_bytes
 ) {
+    const auto execution = rvai::detect_execution_info();
     std::cout << std::fixed << std::setprecision(6)
               << "{\n"
               << "  \"workload\": \"builtin-gemm-int8\",\n"
               << "  \"status\": \"success\",\n"
               << "  \"backend\": \"" << config.backend << "\",\n"
+              << "  \"execution\": {\n"
+              << "    \"target_architecture\": \""
+              << execution.target_architecture << "\",\n"
+              << "    \"execution_environment\": \""
+              << execution.execution_environment << "\",\n"
+              << "    \"host_architecture\": \""
+              << execution.host_architecture << "\",\n"
+              << "    \"performance_representative\": "
+              << (execution.performance_representative ? "true" : "false")
+              << "\n"
+              << "  },\n"
               << "  \"matrix\": {\n"
               << "    \"m\": " << config.m << ",\n"
               << "    \"n\": " << config.n << ",\n"

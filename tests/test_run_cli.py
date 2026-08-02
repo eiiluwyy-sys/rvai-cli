@@ -15,6 +15,12 @@ def benchmark_result() -> BenchmarkResult:
             "workload": "builtin-gemm-int8",
             "status": "success",
             "backend": "scalar",
+            "execution": {
+                "target_architecture": "x86_64",
+                "execution_environment": "native",
+                "host_architecture": "x86_64",
+                "performance_representative": True,
+            },
             "matrix": {"m": 256, "n": 256, "k": 256},
             "iterations": 20,
             "correctness_verified": True,

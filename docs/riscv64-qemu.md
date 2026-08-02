@@ -64,8 +64,8 @@ Machine:                           RISC-V
 older toolchains may not emit an attributes section. P3.1 does not require,
 enable, or claim RVV support.
 
-## QEMU scope
+## QEMU user-mode execution
 
-Executing `rvai-bench` with QEMU user-mode emulation is intentionally deferred
-to a later phase. This phase only establishes the reproducible cross-build and
-ELF inspection boundary that QEMU execution will consume.
+P3.2 execution commands, result metadata, validation rules, and the mandatory
+performance warning are documented in
+[QEMU user-mode validation](qemu-user-validation.md).
