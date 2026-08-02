@@ -20,6 +20,12 @@ def payload() -> dict:
         "workload": "builtin-gemm-int8",
         "status": "success",
         "backend": "scalar",
+        "execution": {
+            "target_architecture": "x86_64",
+            "execution_environment": "native",
+            "host_architecture": "x86_64",
+            "performance_representative": True,
+        },
         "matrix": {"m": 256, "n": 256, "k": 256},
         "iterations": 20,
         "correctness_verified": True,
@@ -67,6 +73,7 @@ def test_execute_validates_native_json(tmp_path: Path, monkeypatch) -> None:
     assert result.correctness_verified is True
     assert result.matrix.m == 256
     assert result.memory_bytes.total == 393216
+    assert result.execution.execution_environment == "native"
 
 
 def test_execute_converts_native_failure_to_adapter_error(

@@ -17,6 +17,7 @@ from pydantic import (
     NonNegativeInt,
     PositiveInt,
     ValidationError,
+    model_validator,
 )
 
 from rvai.adapters.base import WorkloadAdapter
@@ -48,10 +49,30 @@ class MemoryStats(StrictResultModel):
     total: NonNegativeInt
 
 
+class ExecutionInfo(StrictResultModel):
+    target_architecture: Literal[
+        "x86_64", "aarch64", "riscv64", "riscv32", "unknown"
+    ]
+    execution_environment: Literal["native", "qemu-user"]
+    host_architecture: Literal["x86_64", "aarch64", "riscv64", "riscv32"]
+    performance_representative: bool
+
+    @model_validator(mode="after")
+    def validate_performance_representative(self) -> "ExecutionInfo":
+        expected = self.execution_environment == "native"
+        if self.performance_representative != expected:
+            raise ValueError(
+                "performance_representative must be false for qemu-user "
+                "and true for native execution"
+            )
+        return self
+
+
 class BenchmarkResult(StrictResultModel):
     workload: Literal["builtin-gemm-int8"]
     status: Literal["success"]
     backend: Literal["scalar"]
+    execution: ExecutionInfo
     matrix: MatrixShape
     iterations: PositiveInt
     correctness_verified: bool
