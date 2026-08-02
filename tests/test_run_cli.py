@@ -37,7 +37,8 @@ def benchmark_result() -> BenchmarkResult:
 
 def test_run_builtin_outputs_native_result(monkeypatch) -> None:
     class FakeBuiltinAdapter:
-        def execute(self, manifest):
+        def execute(self, manifest, target):
+            assert target.name == "native"
             assert manifest.name == "builtin-gemm-int8"
             return benchmark_result()
 
@@ -51,7 +52,7 @@ def test_run_builtin_outputs_native_result(monkeypatch) -> None:
 
 def test_run_builtin_hides_adapter_traceback(monkeypatch) -> None:
     class FailingBuiltinAdapter:
-        def execute(self, manifest):
+        def execute(self, manifest, target):
             raise AdapterError("native benchmark failed")
 
     monkeypatch.setattr(cli, "BuiltinAdapter", FailingBuiltinAdapter)
