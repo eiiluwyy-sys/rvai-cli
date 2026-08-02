@@ -15,6 +15,7 @@ class RunPlan(BaseModel):
     format: str
     quantization: str
     runtime: str
+    target: str
     resources: dict[str, int | str]
     riscv: dict[str, bool]
     requires_model_file: bool
@@ -24,7 +25,13 @@ class RunPlan(BaseModel):
 class RunPlanner:
     """Turn a validated Manifest into a dry-run execution plan."""
 
-    def plan(self, manifest: ModelManifest, *, dry_run: bool = True) -> RunPlan:
+    def plan(
+        self,
+        manifest: ModelManifest,
+        *,
+        dry_run: bool = True,
+        target: str = "native",
+    ) -> RunPlan:
         if not dry_run:
             raise ValueError("RVAI V0.1 only supports dry-run planning")
 
@@ -34,6 +41,7 @@ class RunPlanner:
             format=manifest.format,
             quantization=manifest.quantization,
             runtime=manifest.runtime,
+            target=target,
             resources={
                 "min_memory_mb": manifest.resources.min_memory_mb,
                 "recommended_threads": manifest.resources.recommended_threads,

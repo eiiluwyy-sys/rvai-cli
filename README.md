@@ -38,6 +38,8 @@ rvai detect
 rvai check builtin-gemm-int8
 rvai run qwen-small-int4 --dry-run
 rvai run builtin-gemm-int8
+rvai run builtin-gemm-int8 --target native
+rvai run builtin-gemm-int8 --target qemu-riscv64
 ```
 
 默认从当前目录的 `models/` 加载 Manifest。也可通过 `RVAI_MODELS_DIR`
