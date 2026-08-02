@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from collections.abc import Mapping
 from pathlib import Path
@@ -90,14 +91,22 @@ class BuiltinAdapter(WorkloadAdapter):
     DEFAULT_K = 256
     DEFAULT_ITERATIONS = 20
 
+    WORKLOAD_ENVIRONMENT = {
+        "m": "RVAI_GEMM_M",
+        "n": "RVAI_GEMM_N",
+        "k": "RVAI_GEMM_K",
+        "iterations": "RVAI_GEMM_ITERATIONS",
+    }
+
     def __init__(
         self,
         executable: Path | str | None = None,
         environ: Mapping[str, str] | None = None,
     ) -> None:
+        self._environ = os.environ if environ is None else environ
         self._default_target = NativeTarget(
             executable=executable,
-            environ=environ,
+            environ=self._environ,
         )
 
     @property
@@ -111,19 +120,39 @@ class BuiltinAdapter(WorkloadAdapter):
             raise AdapterError(
                 f"BuiltinAdapter does not support model {manifest.name}"
             )
+        m = self._positive_environment_value("m", self.DEFAULT_M)
+        n = self._positive_environment_value("n", self.DEFAULT_N)
+        k = self._positive_environment_value("k", self.DEFAULT_K)
+        iterations = self._positive_environment_value(
+            "iterations",
+            self.DEFAULT_ITERATIONS,
+        )
         return [
             "gemm-int8",
             "--m",
-            str(self.DEFAULT_M),
+            str(m),
             "--n",
-            str(self.DEFAULT_N),
+            str(n),
             "--k",
-            str(self.DEFAULT_K),
+            str(k),
             "--iterations",
-            str(self.DEFAULT_ITERATIONS),
+            str(iterations),
             "--backend",
             "scalar",
         ]
+
+    def _positive_environment_value(self, field: str, default: int) -> int:
+        variable = self.WORKLOAD_ENVIRONMENT[field]
+        raw_value = self._environ.get(variable)
+        if raw_value is None:
+            return default
+        try:
+            value = int(raw_value)
+        except ValueError as exc:
+            raise AdapterError(f"{variable} must be a positive integer") from exc
+        if value <= 0:
+            raise AdapterError(f"{variable} must be a positive integer")
+        return value
 
     def build_command(
         self,
