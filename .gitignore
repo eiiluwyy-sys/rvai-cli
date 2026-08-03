@@ -28,5 +28,7 @@ dist/
 # Local model files and runtime output
 artifacts/
 reports/
+/results/
+rvai-cli-v*.zip
 *.gguf
 *.onnx
