@@ -32,6 +32,28 @@ class DownloadResult(StrictModel):
     verified: Literal[True] = True
 
 
+class PullResult(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    status: Literal["downloaded", "already-cached"]
+    model: str = Field(min_length=1)
+    path: Path
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    size_bytes: PositiveInt
+    verified: Literal[True] = True
+
+
+class ArtifactStatus(StrictModel):
+    """Lightweight local status; ``verified`` describes trusted metadata."""
+
+    declared: bool
+    filename: str | None = None
+    sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    size_bytes: PositiveInt | None = None
+    cached: bool = False
+    verified: bool = False
+    path: Path | None = None
+
+
 class ResolvedArtifact(StrictModel):
     model: str = Field(min_length=1)
     path: Path

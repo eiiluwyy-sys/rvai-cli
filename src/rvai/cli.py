@@ -1,11 +1,21 @@
 """Typer entry point for RVAI."""
 
+import json
 from pathlib import Path
 
 import typer
 
 from rvai.adapters import AdapterError, BenchmarkResult, BuiltinAdapter
 from rvai.adapters.builtin import BuiltinAdapter as BuiltinAdapterDefaults
+from rvai.artifacts import (
+    ArtifactCache,
+    ArtifactCacheError,
+    ArtifactDownloadError,
+    ArtifactDownloader,
+    ArtifactIntegrityError,
+    ArtifactResolver,
+    PullResult,
+)
 from rvai.compatibility import (
     CompatibilityError,
     CompatibilityMatcher,
@@ -20,6 +30,7 @@ from rvai.results import (
     ResultStoreError,
     compare_run_records,
     create_run_record,
+    digest_manifest,
     load_run_record,
     render_markdown,
     save_markdown_report,
@@ -61,13 +72,84 @@ def list_models() -> None:
 
 @app.command()
 def show(model: str = typer.Argument(..., help="Registered model name.")) -> None:
-    """Print one validated Manifest as JSON."""
+    """Print one validated Manifest and its local artifact cache status."""
+
+    try:
+        manifest = _registry().get(model)
+        status = ArtifactResolver().status(manifest)
+    except (ArtifactCacheError, RegistryError) as exc:
+        _fail(str(exc))
+    payload = manifest.model_dump(mode="json")
+    declared_artifact = payload.get("artifact") or {}
+    payload["artifact"] = {
+        **declared_artifact,
+        **status.model_dump(mode="json", exclude_none=True),
+    }
+    typer.echo(json.dumps(payload, indent=2, ensure_ascii=False))
+
+
+@app.command()
+def pull(
+    model: str = typer.Argument(..., help="Registered model name."),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Safely replace an existing cached artifact.",
+    ),
+    cache_dir: Path | None = typer.Option(
+        None,
+        "--cache-dir",
+        help="Override the model artifact cache root.",
+    ),
+) -> None:
+    """Download and verify one Manifest-declared model artifact."""
 
     try:
         manifest = _registry().get(model)
     except RegistryError as exc:
         _fail(str(exc))
-    typer.echo(manifest.model_dump_json(indent=2))
+    spec = manifest.artifact
+    if spec is None:
+        _fail(f"Model '{model}' does not declare a downloadable artifact")
+
+    cache = (
+        ArtifactCache(root=cache_dir)
+        if cache_dir is not None
+        else ArtifactCache()
+    )
+    destination = cache.artifact_path(model, spec)
+    try:
+        downloaded = ArtifactDownloader(cache=cache).download(
+            model,
+            spec,
+            destination,
+            manifest_digest=digest_manifest(manifest),
+            force=force,
+        )
+    except ArtifactIntegrityError as exc:
+        detail = str(exc)
+        if detail.startswith("Cached artifact"):
+            _fail(
+                f"Cached artifact for '{model}' failed verification. "
+                "Use --force to replace it."
+            )
+        if "SHA-256" in detail:
+            _fail(f"Artifact SHA-256 mismatch for '{model}'")
+        _fail(f"Artifact integrity check failed for '{model}': {detail}")
+    except ArtifactDownloadError as exc:
+        detail = str(exc).removeprefix("Cannot download artifact: ")
+        _fail(f"Failed to download artifact for '{model}': {detail}")
+    except ArtifactCacheError as exc:
+        _fail(f"Cannot manage artifact cache for '{model}': {exc}")
+
+    result = PullResult(
+        status=downloaded.status,
+        model=downloaded.model,
+        path=downloaded.path,
+        sha256=downloaded.sha256,
+        size_bytes=downloaded.size_bytes,
+    )
+    typer.echo(result.model_dump_json(indent=2))
 
 
 @app.command()
@@ -264,8 +346,18 @@ def check_model(
             if profile_path is not None
             else HardwareProbe().detect()
         )
-        report = CompatibilityMatcher().check(manifest, hardware)
-    except (CompatibilityError, HardwareProbeError, RegistryError) as exc:
+        artifact_resolver = ArtifactResolver()
+        report = CompatibilityMatcher(
+            model_file_exists=lambda candidate: artifact_resolver.status(
+                candidate
+            ).verified
+        ).check(manifest, hardware)
+    except (
+        ArtifactCacheError,
+        CompatibilityError,
+        HardwareProbeError,
+        RegistryError,
+    ) as exc:
         _fail(str(exc))
     typer.echo(report.model_dump_json(indent=2))
 

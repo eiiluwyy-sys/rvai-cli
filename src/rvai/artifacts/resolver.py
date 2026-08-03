@@ -5,11 +5,12 @@ from __future__ import annotations
 from rvai.artifacts.cache import ArtifactCache
 from rvai.artifacts.downloader import verify_file
 from rvai.artifacts.errors import (
+    ArtifactCacheError,
     ArtifactIntegrityError,
     ArtifactNotCachedError,
     ArtifactNotDeclaredError,
 )
-from rvai.artifacts.schema import ResolvedArtifact
+from rvai.artifacts.schema import ArtifactStatus, ResolvedArtifact
 from rvai.manifest import ModelManifest
 from rvai.results import digest_manifest
 
@@ -62,4 +63,43 @@ class ArtifactResolver:
             path=path,
             sha256=actual_sha256,
             size_bytes=actual_size,
+        )
+
+    def status(self, manifest: ModelManifest) -> ArtifactStatus:
+        """Inspect file and metadata presence without reading artifact bytes."""
+
+        spec = manifest.artifact
+        if spec is None:
+            return ArtifactStatus(declared=False)
+
+        path = self.cache.artifact_path(manifest.name, spec)
+        cached = path.is_file()
+        verified = False
+        if cached:
+            try:
+                metadata = self.cache.load_metadata(manifest.name)
+            except ArtifactCacheError:
+                metadata = None
+            if metadata is not None:
+                verified = (
+                    metadata.model == manifest.name
+                    and metadata.filename == spec.filename
+                    and metadata.source_url == str(spec.url)
+                    and metadata.sha256 == spec.sha256
+                    and (
+                        spec.size_bytes is None
+                        or metadata.size_bytes == spec.size_bytes
+                    )
+                    and metadata.manifest_digest == digest_manifest(manifest)
+                    and metadata.verified is True
+                )
+
+        return ArtifactStatus(
+            declared=True,
+            filename=spec.filename,
+            sha256=spec.sha256,
+            size_bytes=spec.size_bytes,
+            cached=cached,
+            verified=verified,
+            path=path if cached else None,
         )

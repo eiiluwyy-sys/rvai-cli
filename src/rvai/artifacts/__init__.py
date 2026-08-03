@@ -12,8 +12,10 @@ from rvai.artifacts.errors import (
 )
 from rvai.artifacts.resolver import ArtifactResolver
 from rvai.artifacts.schema import (
+    ArtifactStatus,
     CachedArtifactMetadata,
     DownloadResult,
+    PullResult,
     ResolvedArtifact,
 )
 
@@ -27,8 +29,10 @@ __all__ = [
     "ArtifactNotCachedError",
     "ArtifactNotDeclaredError",
     "ArtifactResolver",
+    "ArtifactStatus",
     "CHUNK_SIZE",
     "CachedArtifactMetadata",
     "DownloadResult",
+    "PullResult",
     "ResolvedArtifact",
 ]
