@@ -116,6 +116,11 @@ CI executes a committed 185-byte ONNX model that calculates per-channel image
 means. Its input image and expected Top-K result are deterministic. The fixture
 can be regenerated with `scripts/generate-tiny-onnx-fixture.py`; that maintenance
 script requires the `onnx` package, which is not a product dependency.
+The generator fixes ONNX IR version 8 and opset version 13 independently,
+reloads the serialized model, and runs the ONNX checker. Regression tests also
+create a real CPUExecutionProvider session and assert input, output, and numeric
+inference contracts. The fixture file size is intentionally not a compatibility
+contract because protobuf encoding can change between ONNX releases.
 
 Manual integration also downloads the declared `mobilenetv2-12.onnx`, verifies
 its 13,964,571 bytes and SHA-256, preprocesses a real 640 × 480 JPEG, and runs it
