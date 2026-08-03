@@ -56,6 +56,38 @@ def test_new_mobilenet_manifest_loads_verified_declaration() -> None:
     assert manifest.artifact is not None
     assert manifest.artifact.filename == "mobilenetv2-12.onnx"
     assert manifest.artifact.size_bytes == 13964571
+    assert manifest.riscv.require_rv64 is False
+    assert manifest.input is not None
+    assert manifest.input.resize_shorter == 256
+    assert manifest.input.crop == "center"
+    assert manifest.output is not None
+    assert manifest.output.top_k == 5
+    assert manifest.output.scores == "logits"
+
+
+def test_existing_manifests_allow_missing_processing_configuration() -> None:
+    manifest = ModelRegistry(MODELS_DIR).get("builtin-gemm-int8")
+
+    assert manifest.input is None
+    assert manifest.output is None
+
+
+def test_image_input_rejects_non_positive_normalization_std() -> None:
+    manifest = ModelRegistry(MODELS_DIR).get("mobilenet-v2-fp32-onnx")
+    payload = manifest.model_dump(mode="json")
+    payload["input"]["normalize"]["std"] = [0.229, 0.0, 0.225]
+
+    with pytest.raises(ValidationError):
+        ModelManifest.model_validate(payload)
+
+
+def test_image_input_requires_resize_and_crop_together() -> None:
+    manifest = ModelRegistry(MODELS_DIR).get("mobilenet-v2-fp32-onnx")
+    payload = manifest.model_dump(mode="json")
+    payload["input"]["crop"] = None
+
+    with pytest.raises(ValidationError):
+        ModelManifest.model_validate(payload)
 
 
 @pytest.mark.parametrize(

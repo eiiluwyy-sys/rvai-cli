@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import importlib.metadata
 import os
 import shutil
 from collections.abc import Callable, Mapping
@@ -29,6 +30,12 @@ class RuntimeProbe:
         configured_llama = self.environ.get("RVAI_LLAMA_CPP_BIN")
         llama_executable = self.which(configured_llama or "llama-cli")
         onnx_available = self.find_spec("onnxruntime") is not None
+        onnx_version: str | None = None
+        if onnx_available:
+            try:
+                onnx_version = importlib.metadata.version("onnxruntime")
+            except importlib.metadata.PackageNotFoundError:
+                pass
 
         return RuntimeInfo(
             builtin=RuntimeStatus(available=True),
@@ -36,5 +43,8 @@ class RuntimeProbe:
                 available=llama_executable is not None,
                 executable=llama_executable,
             ),
-            onnxruntime=RuntimeStatus(available=onnx_available),
+            onnxruntime=RuntimeStatus(
+                available=onnx_available,
+                version=onnx_version,
+            ),
         )

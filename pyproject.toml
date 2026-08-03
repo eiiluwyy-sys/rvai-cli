@@ -19,7 +19,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+onnx = [
+  "numpy>=1.24,<3",
+  "onnxruntime>=1.17,<2",
+  "Pillow>=10,<13",
+]
 dev = [
+  "onnx>=1.16,<2",
   "pytest>=8,<9",
 ]
 
@@ -31,6 +37,9 @@ package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+rvai = ["data/*.txt"]
 
 [tool.pytest.ini_options]
 addopts = "-q"

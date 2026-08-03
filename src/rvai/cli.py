@@ -5,7 +5,12 @@ from pathlib import Path
 
 import typer
 
-from rvai.adapters import AdapterError, BenchmarkResult, BuiltinAdapter
+from rvai.adapters import (
+    AdapterError,
+    BenchmarkResult,
+    BuiltinAdapter,
+    OnnxRuntimeAdapter,
+)
 from rvai.adapters.builtin import BuiltinAdapter as BuiltinAdapterDefaults
 from rvai.artifacts import (
     ArtifactCache,
@@ -13,6 +18,8 @@ from rvai.artifacts import (
     ArtifactDownloadError,
     ArtifactDownloader,
     ArtifactIntegrityError,
+    ArtifactNotCachedError,
+    ArtifactNotDeclaredError,
     ArtifactResolver,
     PullResult,
 )
@@ -22,6 +29,8 @@ from rvai.compatibility import (
     load_hardware_profile,
 )
 from rvai.hardware import HardwareProbe, HardwareProbeError, HardwareProfile
+from rvai.inference import InferenceError, load_onnx_dependencies
+from rvai.manifest import ModelManifest
 from rvai.planner import RunPlanner
 from rvai.registry import ModelRegistry, RegistryError
 from rvai.results import (
@@ -51,6 +60,13 @@ def _registry() -> ModelRegistry:
 
 def _hardware_probe() -> HardwareProbe:
     return HardwareProbe()
+
+
+def _available_adapters(manifest: ModelManifest) -> tuple[str, ...]:
+    adapters = ["builtin"]
+    if OnnxRuntimeAdapter.supports(manifest):
+        adapters.append("onnxruntime")
+    return tuple(adapters)
 
 
 def _fail(message: str) -> None:
@@ -149,6 +165,63 @@ def pull(
         sha256=downloaded.sha256,
         size_bytes=downloaded.size_bytes,
     )
+    typer.echo(result.model_dump_json(indent=2))
+
+
+@app.command()
+def infer(
+    model: str = typer.Argument(..., help="Registered ONNX model name."),
+    input_path: Path = typer.Option(
+        ...,
+        "--input",
+        help="Single image to classify.",
+    ),
+) -> None:
+    """Run native batch-one FP32 ONNX image classification."""
+
+    try:
+        manifest = _registry().get(model)
+        if not OnnxRuntimeAdapter.supports(manifest):
+            _fail(f"Model '{model}' is not a supported ONNX model")
+        dependencies = load_onnx_dependencies()
+        artifact_resolver = ArtifactResolver()
+        artifact_status = artifact_resolver.status(manifest)
+        hardware = HardwareProbe().detect()
+        compatibility = CompatibilityMatcher(
+            available_adapters=_available_adapters(manifest),
+            model_file_exists=lambda candidate: (
+                candidate.name == manifest.name and artifact_status.verified
+            ),
+        ).check(manifest, hardware)
+        if compatibility.blocking_reasons:
+            codes = {issue.code for issue in compatibility.blocking_reasons}
+            if "model_file_missing" in codes:
+                _fail(
+                    f"Model '{model}' artifact is not cached with matching metadata; "
+                    f"run 'rvai pull {model}' first"
+                )
+            reasons = "; ".join(
+                f"{issue.code}: {issue.message}"
+                for issue in compatibility.blocking_reasons
+            )
+            _fail(f"Model '{model}' is not ready: {reasons}")
+        artifact = artifact_resolver.resolve(manifest)
+        result = OnnxRuntimeAdapter(dependencies=dependencies).infer(
+            manifest,
+            model_path=artifact.path,
+            input_path=input_path,
+        )
+    except (ArtifactNotCachedError, ArtifactNotDeclaredError) as exc:
+        _fail(f"{exc}; run 'rvai pull {model}' first")
+    except ArtifactIntegrityError as exc:
+        _fail(f"Artifact verification failed for '{model}': {exc}")
+    except (
+        ArtifactCacheError,
+        HardwareProbeError,
+        InferenceError,
+        RegistryError,
+    ) as exc:
+        _fail(str(exc))
     typer.echo(result.model_dump_json(indent=2))
 
 
@@ -348,6 +421,7 @@ def check_model(
         )
         artifact_resolver = ArtifactResolver()
         report = CompatibilityMatcher(
+            available_adapters=_available_adapters(manifest),
             model_file_exists=lambda candidate: artifact_resolver.status(
                 candidate
             ).verified
