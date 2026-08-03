@@ -38,3 +38,67 @@ jobs:
         run: |
           ctest --test-dir build --output-on-failure
           python -m pytest
+
+  riscv64-qemu:
+    runs-on: ubuntu-latest
+
+    env:
+      RVAI_GEMM_M: "32"
+      RVAI_GEMM_N: "32"
+      RVAI_GEMM_K: "32"
+      RVAI_GEMM_ITERATIONS: "2"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install riscv64 toolchain and QEMU
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            binutils-riscv64-linux-gnu \
+            file \
+            g++-riscv64-linux-gnu \
+            qemu-user
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install CLI
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Cross-build and inspect riscv64 ELF
+        run: ./scripts/build-riscv64.sh
+
+      - name: Run riscv64 benchmark directly through QEMU
+        run: |
+          qemu-riscv64 \
+            -L /usr/riscv64-linux-gnu \
+            -E RVAI_EXECUTION_ENVIRONMENT=qemu-user \
+            -E RVAI_HOST_ARCHITECTURE=x86_64 \
+            build-riscv64/rvai-bench \
+            gemm-int8 \
+            --m 32 \
+            --n 32 \
+            --k 32 \
+            --iterations 2 \
+            --backend scalar \
+            > build-riscv64/qemu-direct.json
+          python scripts/validate-benchmark-json.py \
+            build-riscv64/qemu-direct.json \
+            --m 32 --n 32 --k 32 --iterations 2
+
+      - name: Run riscv64 benchmark through rvai CLI
+        run: |
+          RVAI_RISCV64_BENCH_BIN="$PWD/build-riscv64/rvai-bench" \
+          rvai run builtin-gemm-int8 \
+            --target qemu-riscv64 \
+            > build-riscv64/qemu-cli.json
+          python scripts/validate-benchmark-json.py \
+            build-riscv64/qemu-cli.json \
+            --m 32 --n 32 --k 32 --iterations 2

@@ -47,6 +47,12 @@ Defaults are `qemu-riscv64`, `/usr/riscv64-linux-gnu`, and
 to the guest and the adapter rejects results that do not report riscv64,
 qemu-user, and non-representative performance.
 
+Automated correctness jobs can reduce the builtin GEMM workload without
+changing the public CLI by setting `RVAI_GEMM_M`, `RVAI_GEMM_N`,
+`RVAI_GEMM_K`, and `RVAI_GEMM_ITERATIONS`. Each value must be a positive
+integer. Normal runs keep the documented `256 x 256 x 256` matrix and 20 timed
+iterations when these variables are unset.
+
 ## Dry-run
 
 Dry-run records the selected target without checking binaries or sysroots:
