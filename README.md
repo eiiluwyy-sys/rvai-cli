@@ -22,6 +22,12 @@ source .venv/bin/activate
 python -m pip install -e ".[dev]"
 ```
 
+ONNX 图片分类是可选功能，不会进入基础安装：
+
+```bash
+python -m pip install -e ".[onnx]"
+```
+
 构建原生 workload：
 
 ```bash
@@ -40,6 +46,8 @@ rvai run qwen-small-int4 --dry-run
 rvai run builtin-gemm-int8
 rvai run builtin-gemm-int8 --target native
 rvai run builtin-gemm-int8 --target qemu-riscv64
+rvai pull mobilenet-v2-fp32-onnx
+rvai infer mobilenet-v2-fp32-onnx --input path/to/image.jpg
 ```
 
 保存标准化运行记录、生成 Markdown 报告并进行可信比较：
@@ -69,8 +77,10 @@ SSH 密码及其他凭据不得写入运行记录；未来新增认证或 Token 
 `RVAI_BENCH_BIN` 指定完整路径。其他模型当前仍只支持 `--dry-run`。
 
 `qwen-small-int4` 和 `mobilenet-int8` 当前仅为模型注册条目，仓库中不包含
-对应的 GGUF 或 ONNX 模型文件。运行计划会通过 `requires_model_file` 明确
-标识这一需求。
+对应的 GGUF 或 ONNX 模型文件。`mobilenet-v2-fp32-onnx` 可通过 `rvai pull`
+下载并进行 SHA-256 验证，安装 ONNX extra 后可在 native CPU 上执行单图片、
+batch-one、FP32 ImageNet Top-K 分类。详细边界参见
+[docs/onnx-inference.md](docs/onnx-inference.md)。
 
 ## 测试
 
@@ -78,6 +88,7 @@ SSH 密码及其他凭据不得写入运行记录；未来新增认证或 Token 
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
+python -m pip install -e ".[dev,onnx]"
 python -m pytest
 ```
 
