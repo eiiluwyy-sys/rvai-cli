@@ -12,6 +12,7 @@ from rvai.model_pipeline.calibration import (
 )
 from rvai.model_pipeline.config import load_pipeline_config
 from rvai.model_pipeline.dataset import validate_dataset
+from rvai.model_pipeline.io import canonical_json_bytes
 from rvai.model_pipeline.schema import MobileNetV2P43BDatasetManifest
 
 
@@ -66,6 +67,12 @@ def test_selection_uses_exact_manifest_order(tmp_path: Path) -> None:
         "sample-0",
         "sample-1",
     ]
+    assert (
+        type(selection.record).model_validate_json(
+            canonical_json_bytes(selection.record)
+        )
+        == selection.record
+    )
 
 
 def test_selection_rejects_insufficient_samples(tmp_path: Path) -> None:

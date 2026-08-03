@@ -32,7 +32,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def create_quantizable_model(path: Path):
+def create_quantizable_model(path: Path, *, opset_version: int = 13):
     onnx = pytest.importorskip("onnx")
     image = onnx.helper.make_tensor_value_info(
         "image", onnx.TensorProto.FLOAT, [1, 3, 224, 224]
@@ -70,7 +70,7 @@ def create_quantizable_model(path: Path):
         graph,
         producer_name="rvai-tests",
         producer_version="1.0",
-        opset_imports=[onnx.helper.make_opsetid("", 13)],
+        opset_imports=[onnx.helper.make_opsetid("", opset_version)],
     )
     model.ir_version = 8
     onnx.save_model(model, path)
@@ -150,6 +150,9 @@ def test_static_quantization_produces_checked_qdq_artifact(tmp_path: Path) -> No
     assert record.checker_passed is True
     assert record.contract_matched is True
     assert record.execution_provider == "CPUExecutionProvider"
+    assert record.source_opset_version == 13
+    assert record.quantization_input_opset_version == 13
+    assert record.opset_conversion_applied is False
     assert record.quantization.format == "qdq"
     assert record.structure.quantize_linear_count > 0
     assert record.structure.dequantize_linear_count > 0
@@ -157,6 +160,37 @@ def test_static_quantization_produces_checked_qdq_artifact(tmp_path: Path) -> No
     assert record.artifact.size_bytes == destination.stat().st_size
     assert record.calibration_sample_ids == ("sample-0", "sample-1")
     assert canonical_json_bytes(record) == canonical_json_bytes(record)
+    assert type(record).model_validate_json(canonical_json_bytes(record)) == record
+
+
+def test_static_quantization_converts_opset_12_input_without_changing_source(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "mobilenetv2-12.onnx"
+    onnx = create_quantizable_model(source, opset_version=12)
+    source_bytes = source.read_bytes()
+    inspection = inspect_source_model(
+        source,
+        source_identity(source),
+        onnx_module=onnx,
+    )
+    destination = tmp_path / "mobilenetv2-12-int8.onnx"
+
+    record = quantize_static_qdq(
+        source,
+        destination,
+        source_inspection=inspection,
+        pipeline=load_pipeline_config(CONFIG_DIR / "pipeline.yaml"),
+        calibration=calibration_selection(tmp_path),
+        dependencies=load_model_pipeline_dependencies(),
+    )
+
+    assert source.read_bytes() == source_bytes
+    assert record.source_opset_version == 12
+    assert record.quantization_input_opset_version == 13
+    assert record.opset_conversion_applied is True
+    quantized = onnx.load_model(str(destination), load_external_data=False)
+    assert [(item.domain, item.version) for item in quantized.opset_import] == [("", 13)]
 
 
 def test_quantization_refuses_to_overwrite_existing_artifact(tmp_path: Path) -> None:

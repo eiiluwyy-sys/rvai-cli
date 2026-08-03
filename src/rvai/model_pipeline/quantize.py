@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Callable, Literal
 
-from pydantic import NonNegativeInt, PositiveInt, model_validator
+from pydantic import NonNegativeInt, PositiveInt, field_validator, model_validator
 
 from rvai.model_pipeline.calibration import (
     CalibrationSelection,
@@ -70,16 +70,28 @@ class MobileNetV2P43BQuantizationRecord(StrictModel):
     quantization: MobileNetV2P43BQuantizationConfig
     execution_provider: Literal["CPUExecutionProvider"]
     onnxruntime_version: Description
+    source_opset_version: PositiveInt
+    quantization_input_opset_version: Literal[13]
+    opset_conversion_applied: bool
     checker_passed: Literal[True]
     contract_matched: Literal[True]
     structure: MobileNetV2P43BQuantizedStructure
     artifact: MobileNetV2P43BQuantizedArtifact
+
+    @field_validator("calibration_sample_ids", mode="before")
+    @classmethod
+    def sample_id_list_to_tuple(cls, value: Any) -> Any:
+        return tuple(value) if isinstance(value, list) else value
 
     @model_validator(mode="after")
     def count_matches_sample_ids(self) -> "MobileNetV2P43BQuantizationRecord":
         if self.calibration_sample_count != len(self.calibration_sample_ids):
             raise ValueError(
                 "calibration_sample_count must equal the number of sample IDs"
+            )
+        if self.opset_conversion_applied != (self.source_opset_version != 13):
+            raise ValueError(
+                "opset_conversion_applied must match the source opset version"
             )
         return self
 
@@ -110,6 +122,10 @@ def quantize_static_qdq(
     modules = dependencies or load_model_pipeline_dependencies()
     quantize = quantize_static_fn or modules.quantization.quantize_static
     _require_calibration_provider_support(quantize)
+    quantization_input, source_opset = _prepare_quantization_input(
+        source,
+        modules,
+    )
     reader = ManifestCalibrationDataReader(
         calibration,
         input_name=source_inspection.inputs[0].name,
@@ -128,7 +144,7 @@ def quantize_static_qdq(
         os.close(descriptor)
         temporary = Path(temporary_name)
         quantize(
-            model_input=str(source),
+            model_input=quantization_input,
             model_output=str(temporary),
             calibration_data_reader=reader,
             quant_format=modules.quantization.QuantFormat.QDQ,
@@ -166,6 +182,9 @@ def quantize_static_qdq(
             quantization=pipeline.quantization,
             execution_provider="CPUExecutionProvider",
             onnxruntime_version=str(modules.onnxruntime.__version__),
+            source_opset_version=source_opset,
+            quantization_input_opset_version=13,
+            opset_conversion_applied=source_opset != 13,
             checker_passed=True,
             contract_matched=True,
             structure=MobileNetV2P43BQuantizedStructure(
@@ -231,6 +250,44 @@ def _verify_calibration_matches(calibration: CalibrationSelection) -> None:
         or calibration.record.sample_ids != selected_ids
     ):
         raise QuantizationError("Calibration samples do not match the selection record")
+
+
+def _prepare_quantization_input(
+    source: Path,
+    modules: ModelPipelineDependencies,
+) -> tuple[Any, int]:
+    """Return a checked opset-13 model without changing the frozen source file."""
+
+    try:
+        model = modules.onnx.load_model(str(source), load_external_data=False)
+        source_opsets = [
+            item.version
+            for item in model.opset_import
+            if item.domain in {"", "ai.onnx"}
+        ]
+        if len(source_opsets) != 1:
+            raise QuantizationError(
+                "Source model must declare exactly one ai.onnx opset import"
+            )
+        source_opset = source_opsets[0]
+        if source_opset not in {12, 13}:
+            raise QuantizationError(
+                "Frozen QDQ pipeline supports source opset 12 or 13, got "
+                f"{source_opset}"
+            )
+        if source_opset == 12:
+            model = modules.onnx.version_converter.convert_version(model, 13)
+        modules.onnx.checker.check_model(model)
+        inputs = _runtime_inputs(model)
+        outputs = tuple(_tensor_contract(value) for value in model.graph.output)
+        _require_mobilenet_v2_contract(inputs, outputs)
+        return model, source_opset
+    except QuantizationError:
+        raise
+    except Exception as exc:
+        raise QuantizationError(
+            f"Cannot prepare checked opset-13 quantization input: {exc}"
+        ) from exc
 
 
 def _require_calibration_provider_support(quantize: Callable[..., Any]) -> None:

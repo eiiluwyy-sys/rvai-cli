@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import NonNegativeInt, PositiveInt, model_validator
+from pydantic import NonNegativeInt, PositiveInt, field_validator, model_validator
 
 from rvai.model_pipeline.errors import ModelPipelineError, PipelineIOError
 from rvai.model_pipeline.io import sha256_canonical_json, sha256_file
@@ -50,6 +50,11 @@ class MobileNetV2P43BDatasetValidationRecord(StrictModel):
     sample_count: PositiveInt
     samples: tuple[MobileNetV2P43BValidatedSampleRecord, ...]
 
+    @field_validator("samples", mode="before")
+    @classmethod
+    def sample_list_to_tuple(cls, value: Any) -> Any:
+        return tuple(value) if isinstance(value, list) else value
+
     @model_validator(mode="after")
     def count_matches_samples(self) -> "MobileNetV2P43BDatasetValidationRecord":
         if self.sample_count != len(self.samples):
@@ -64,6 +69,11 @@ class MobileNetV2P43BOverlapPair(StrictModel):
     evaluation_id: Identifier
     reasons: tuple[Literal["sample_id", "content_sha256", "resolved_file"], ...]
 
+    @field_validator("reasons", mode="before")
+    @classmethod
+    def reason_list_to_tuple(cls, value: Any) -> Any:
+        return tuple(value) if isinstance(value, list) else value
+
 
 class MobileNetV2P43BOverlapReport(StrictModel):
     """Deterministic overlap decision for two validated manifests."""
@@ -73,6 +83,11 @@ class MobileNetV2P43BOverlapReport(StrictModel):
     evaluation_manifest_sha256: Sha256Digest
     overlap_count: NonNegativeInt
     overlaps: tuple[MobileNetV2P43BOverlapPair, ...]
+
+    @field_validator("overlaps", mode="before")
+    @classmethod
+    def overlap_list_to_tuple(cls, value: Any) -> Any:
+        return tuple(value) if isinstance(value, list) else value
 
     @model_validator(mode="after")
     def count_matches_pairs(self) -> "MobileNetV2P43BOverlapReport":

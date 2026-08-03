@@ -8,7 +8,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, Literal
 
-from pydantic import NonNegativeInt, PositiveInt
+from pydantic import NonNegativeInt, PositiveInt, field_validator
 
 from rvai.model_pipeline.errors import ModelPipelineError, PipelineIOError
 from rvai.model_pipeline.io import sha256_file
@@ -42,6 +42,11 @@ class MobileNetV2P43BTensorContract(StrictModel):
     dtype: Identifier
     shape: tuple[TensorDimension, ...]
 
+    @field_validator("shape", mode="before")
+    @classmethod
+    def shape_list_to_tuple(cls, value: Any) -> Any:
+        return tuple(value) if isinstance(value, list) else value
+
 
 class MobileNetV2P43BOperatorSummary(StrictModel):
     """Count of one normalized ONNX operator type and domain."""
@@ -68,6 +73,11 @@ class MobileNetV2P43BSourceInspectionRecord(StrictModel):
     node_count: NonNegativeInt
     initializer_count: NonNegativeInt
     operators: tuple[MobileNetV2P43BOperatorSummary, ...]
+
+    @field_validator("opset_imports", "inputs", "outputs", "operators", mode="before")
+    @classmethod
+    def record_lists_to_tuples(cls, value: Any) -> Any:
+        return tuple(value) if isinstance(value, list) else value
 
 
 _DTYPES = {
@@ -230,20 +240,50 @@ def _require_mobilenet_v2_contract(
         raise SourceInspectionError(
             f"MobileNetV2 requires exactly one runtime input, got {len(inputs)}"
         )
-    if inputs[0].dtype != "float32" or inputs[0].shape != (1, 3, 224, 224):
+    input_shape = inputs[0].shape
+    if (
+        inputs[0].dtype != "float32"
+        or len(input_shape) != 4
+        or input_shape[1:] != (3, 224, 224)
+    ):
         raise SourceInspectionError(
-            "MobileNetV2 input contract mismatch: expected float32 [1, 3, 224, 224], "
+            "MobileNetV2 input contract mismatch: expected float32 "
+            "[batch, 3, 224, 224], "
             f"got {inputs[0].dtype} {list(inputs[0].shape)}"
         )
     if len(outputs) != 1:
         raise SourceInspectionError(
             f"MobileNetV2 requires exactly one classification output, got {len(outputs)}"
         )
-    if outputs[0].dtype != "float32" or outputs[0].shape != (1, 1000):
+    output_shape = outputs[0].shape
+    if (
+        outputs[0].dtype != "float32"
+        or len(output_shape) != 2
+        or output_shape[1:] != (1000,)
+    ):
         raise SourceInspectionError(
-            "MobileNetV2 output contract mismatch: expected float32 [1, 1000], "
+            "MobileNetV2 output contract mismatch: expected float32 [batch, 1000], "
             f"got {outputs[0].dtype} {list(outputs[0].shape)}"
         )
+    if not _batch_dimensions_compatible(input_shape[0], output_shape[0]):
+        raise SourceInspectionError(
+            "MobileNetV2 batch contract mismatch: expected input and output batch "
+            "dimensions to both be 1 or the same non-empty symbol, got "
+            f"{input_shape[0]!r} and {output_shape[0]!r}"
+        )
+
+
+def _batch_dimensions_compatible(input_batch: Any, output_batch: Any) -> bool:
+    """Accept literal batch one or one shared non-empty symbolic batch."""
+
+    if input_batch == 1 and output_batch == 1:
+        return True
+    return (
+        isinstance(input_batch, str)
+        and bool(input_batch)
+        and input_batch == input_batch.strip()
+        and input_batch == output_batch
+    )
 
 
 def _domain(value: str) -> str:

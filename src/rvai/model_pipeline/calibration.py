@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from types import ModuleType
 from typing import Any, Literal
 
-from pydantic import PositiveInt, model_validator
+from pydantic import PositiveInt, field_validator, model_validator
 
 from rvai.inference.errors import InferenceError
 from rvai.inference.preprocess import preprocess_image
@@ -45,6 +45,11 @@ class MobileNetV2P43BCalibrationSelectionRecord(StrictModel):
     sample_order: Literal["manifest"]
     sample_count: PositiveInt
     sample_ids: tuple[Identifier, ...]
+
+    @field_validator("sample_ids", mode="before")
+    @classmethod
+    def sample_id_list_to_tuple(cls, value: Any) -> Any:
+        return tuple(value) if isinstance(value, list) else value
 
     @model_validator(mode="after")
     def count_matches_samples(self) -> "MobileNetV2P43BCalibrationSelectionRecord":

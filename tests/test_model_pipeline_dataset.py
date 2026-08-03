@@ -11,7 +11,7 @@ from rvai.model_pipeline.dataset import (
     require_no_dataset_overlap,
     validate_dataset,
 )
-from rvai.model_pipeline.io import canonical_json_text
+from rvai.model_pipeline.io import canonical_json_bytes, canonical_json_text
 from rvai.model_pipeline.schema import MobileNetV2P43BDatasetManifest
 
 
@@ -83,6 +83,12 @@ def test_dataset_validation_preserves_order_and_records_portable_evidence(
     serialized = canonical_json_text(validated.record)
     assert str(root.resolve()) not in serialized
     assert "class-000/first.ppm" in serialized
+    assert (
+        type(validated.record).model_validate_json(
+            canonical_json_bytes(validated.record)
+        )
+        == validated.record
+    )
 
 
 def test_calibration_labels_may_be_omitted(tmp_path: Path) -> None:
@@ -187,6 +193,7 @@ def test_overlap_detection_uses_ids_content_and_resolved_files(tmp_path: Path) -
         "content_sha256",
         "resolved_file",
     )
+    assert type(report).model_validate_json(canonical_json_bytes(report)) == report
     with pytest.raises(DatasetOverlapError, match="1 sample pair"):
         require_no_dataset_overlap(calibration, evaluation)
 

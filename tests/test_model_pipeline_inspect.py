@@ -67,6 +67,43 @@ def _shape_size(shape: tuple[int, ...]) -> int:
     return size
 
 
+def create_symbolic_batch_model(
+    path: Path,
+    *,
+    input_batch: str = "batch_size",
+    output_batch: str = "batch_size",
+):
+    onnx = pytest.importorskip("onnx")
+    image = onnx.helper.make_tensor_value_info(
+        "image", onnx.TensorProto.FLOAT, [input_batch, 3, 224, 224]
+    )
+    logits = onnx.helper.make_tensor_value_info(
+        "logits", onnx.TensorProto.FLOAT, [output_batch, 1000]
+    )
+    weights = onnx.helper.make_tensor(
+        "weights", onnx.TensorProto.FLOAT, [3, 1000], [0.01] * 3000
+    )
+    nodes = [
+        onnx.helper.make_node("GlobalAveragePool", ["image"], ["pooled"]),
+        onnx.helper.make_node("Flatten", ["pooled"], ["features"], axis=1),
+        onnx.helper.make_node("MatMul", ["features", "weights"], ["logits"]),
+    ]
+    graph = onnx.helper.make_graph(
+        nodes,
+        "symbolic-batch-mobilenet-contract",
+        [image],
+        [logits],
+        [weights],
+    )
+    model = onnx.helper.make_model(
+        graph,
+        opset_imports=[onnx.helper.make_opsetid("", 13)],
+    )
+    model.ir_version = 8
+    onnx.save_model(model, path)
+    return onnx
+
+
 def test_inspection_records_checked_graph_and_frozen_contract(tmp_path: Path) -> None:
     path = tmp_path / "mobilenetv2-12.onnx"
     onnx = create_model(path)
@@ -91,6 +128,31 @@ def test_inspection_records_checked_graph_and_frozen_contract(tmp_path: Path) ->
         ("ai.onnx", "Constant", 1)
     ]
     assert canonical_json_bytes(record) == canonical_json_bytes(record)
+    assert type(record).model_validate_json(canonical_json_bytes(record)) == record
+
+
+def test_inspection_accepts_shared_symbolic_batch_dimension(tmp_path: Path) -> None:
+    path = tmp_path / "mobilenetv2-12.onnx"
+    onnx = create_symbolic_batch_model(path)
+
+    record = inspect_source_model(path, expected_identity(path), onnx_module=onnx)
+
+    assert record.inputs[0].shape == ("batch_size", 3, 224, 224)
+    assert record.outputs[0].shape == ("batch_size", 1000)
+
+
+def test_inspection_rejects_different_symbolic_batch_dimensions(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "mobilenetv2-12.onnx"
+    onnx = create_symbolic_batch_model(
+        path,
+        input_batch="input_batch",
+        output_batch="output_batch",
+    )
+
+    with pytest.raises(SourceInspectionError, match="batch contract mismatch"):
+        inspect_source_model(path, expected_identity(path), onnx_module=onnx)
 
 
 @pytest.mark.parametrize("mismatch", ["filename", "size", "sha256"])
