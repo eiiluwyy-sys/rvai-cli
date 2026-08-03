@@ -53,6 +53,17 @@ class FakeUrlOpen:
         return self.response
 
 
+class InterruptingUrlOpen:
+    def __call__(self, request: object, *, timeout: float) -> FakeResponse:
+        class InterruptingResponse(FakeResponse):
+            def read(self, size: int) -> bytes:
+                if self.offset:
+                    raise ConnectionResetError("connection interrupted")
+                return super().read(size)
+
+        return InterruptingResponse(b"partial response" * 100_000)
+
+
 def artifact_spec(
     payload: bytes,
     *,
@@ -140,6 +151,36 @@ def test_network_failure_is_wrapped_and_leaves_no_partial_file(tmp_path) -> None
     destination = cache.artifact_path("demo-model", spec)
 
     with pytest.raises(ArtifactDownloadError, match="Cannot download artifact"):
+        subject.download(
+            "demo-model", spec, destination, manifest_digest=MANIFEST_DIGEST
+        )
+
+    assert not destination.exists()
+    assert_no_partial_files(destination)
+
+
+def test_timeout_is_wrapped_and_leaves_no_partial_file(tmp_path) -> None:
+    opener = FakeUrlOpen(error=TimeoutError("timed out"))
+    subject, cache = downloader(tmp_path, opener)
+    spec = artifact_spec(b"expected")
+    destination = cache.artifact_path("demo-model", spec)
+
+    with pytest.raises(ArtifactDownloadError, match="timed out"):
+        subject.download(
+            "demo-model", spec, destination, manifest_digest=MANIFEST_DIGEST
+        )
+
+    assert not destination.exists()
+    assert_no_partial_files(destination)
+
+
+def test_interrupted_response_is_wrapped_and_cleans_partial_file(tmp_path) -> None:
+    cache = ArtifactCache(root=tmp_path / "cache")
+    subject = ArtifactDownloader(cache=cache, urlopen=InterruptingUrlOpen())
+    spec = artifact_spec(b"expected")
+    destination = cache.artifact_path("demo-model", spec)
+
+    with pytest.raises(ArtifactDownloadError, match="connection interrupted"):
         subject.download(
             "demo-model", spec, destination, manifest_digest=MANIFEST_DIGEST
         )

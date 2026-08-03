@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 
@@ -43,6 +44,12 @@ def test_cache_uses_environment_override(tmp_path) -> None:
         root / "demo-model" / "model.onnx"
     )
     assert cache.metadata_path("demo-model") == root / "demo-model" / "artifact.json"
+
+
+def test_cache_default_is_outside_the_repository() -> None:
+    cache = ArtifactCache(environ={})
+
+    assert cache.root == Path.home() / ".cache" / "rvai" / "models"
 
 
 @pytest.mark.parametrize(

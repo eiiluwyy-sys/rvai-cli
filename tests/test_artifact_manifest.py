@@ -92,6 +92,22 @@ def test_artifact_normalizes_sha256_to_lowercase() -> None:
     assert ArtifactSpec.model_validate(artifact_data()).sha256 == "a" * 64
 
 
+def test_artifact_rejects_zero_size() -> None:
+    data = artifact_data()
+    data["size_bytes"] = 0
+
+    with pytest.raises(ValidationError):
+        ArtifactSpec.model_validate(data)
+
+
+def test_artifact_rejects_extra_fields() -> None:
+    data = artifact_data()
+    data["authorization"] = "secret"
+
+    with pytest.raises(ValidationError):
+        ArtifactSpec.model_validate(data)
+
+
 @pytest.mark.parametrize(
     "url",
     [
