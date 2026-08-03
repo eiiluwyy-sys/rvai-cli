@@ -1,0 +1,23 @@
+name: mobilenet-v2-fp32-onnx
+display_name: MobileNet V2 FP32 ONNX
+
+task: image_classification
+format: onnx
+quantization: fp32
+runtime: onnxruntime
+
+resources:
+  min_memory_mb: 512
+  recommended_threads: auto
+
+riscv:
+  require_rv64: true
+  prefer_rvv: true
+
+artifact:
+  filename: mobilenetv2-12.onnx
+  url: https://github.com/onnx/models/raw/main/validated/vision/classification/mobilenet/model/mobilenetv2-12.onnx
+  sha256: c0c3f76d93fa3fd6580652a45618618a220fced18babf65774ed169de0432ad5
+  size_bytes: 13964571
+  media_type: application/onnx
+  license: Apache-2.0
