@@ -42,6 +42,25 @@ rvai run builtin-gemm-int8 --target native
 rvai run builtin-gemm-int8 --target qemu-riscv64
 ```
 
+保存标准化运行记录、生成 Markdown 报告并进行可信比较：
+
+```bash
+rvai run builtin-gemm-int8 --target native --output results/native.json
+rvai run builtin-gemm-int8 --target qemu-riscv64 --output results/qemu.json
+rvai report results/native.json --format markdown --output results/native.md
+rvai compare results/native.json results/qemu.json
+```
+
+结果文件默认不会被覆盖；需要明确使用 `--force`。运行记录包含 Manifest
+SHA-256 摘要、可复现命令、可选硬件快照和原始 benchmark JSON。比较器只有
+在两边都属于代表性执行环境且 workload 参数一致时才计算性能比例；QEMU
+结果可以比较正确性和原始数值，但不会产生误导性的 speedup 结论。
+
+运行记录中的 `command` 只保存可复现的非敏感参数。API Key、认证 header、
+SSH 密码及其他凭据不得写入运行记录；未来新增认证或 Token 功能时也必须在
+构造 `RunRecord` 前过滤敏感环境变量。用户提供的路径可能包含隐私信息，只有
+确实影响复现时才应保存。
+
 默认从当前目录的 `models/` 加载 Manifest。也可通过 `RVAI_MODELS_DIR`
 环境变量指定其他模型目录。
 

@@ -4,15 +4,27 @@ from pathlib import Path
 
 import typer
 
-from rvai.adapters import AdapterError, BuiltinAdapter
+from rvai.adapters import AdapterError, BenchmarkResult, BuiltinAdapter
+from rvai.adapters.builtin import BuiltinAdapter as BuiltinAdapterDefaults
 from rvai.compatibility import (
     CompatibilityError,
     CompatibilityMatcher,
     load_hardware_profile,
 )
-from rvai.hardware import HardwareProbe, HardwareProbeError
+from rvai.hardware import HardwareProbe, HardwareProbeError, HardwareProfile
 from rvai.planner import RunPlanner
 from rvai.registry import ModelRegistry, RegistryError
+from rvai.results import (
+    ReportFormat,
+    ReportRenderError,
+    ResultStoreError,
+    compare_run_records,
+    create_run_record,
+    load_run_record,
+    render_markdown,
+    save_markdown_report,
+    save_run_record,
+)
 from rvai.targets import TargetName, create_target
 
 app = typer.Typer(
@@ -24,6 +36,10 @@ app = typer.Typer(
 
 def _registry() -> ModelRegistry:
     return ModelRegistry()
+
+
+def _hardware_probe() -> HardwareProbe:
+    return HardwareProbe()
 
 
 def _fail(message: str) -> None:
@@ -67,6 +83,16 @@ def run(
         "--target",
         help="Execution target for real runs or dry-run plans.",
     ),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        help="Save a versioned RunRecord JSON file.",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Overwrite an existing --output file.",
+    ),
 ) -> None:
     """Plan or execute a registered workload."""
 
@@ -74,6 +100,11 @@ def run(
         manifest = _registry().get(model)
     except RegistryError as exc:
         _fail(str(exc))
+
+    if force and output is None:
+        _fail("--force requires --output")
+    if dry_run and output is not None:
+        _fail("--output is available only for completed benchmark runs")
 
     if dry_run:
         try:
@@ -95,7 +126,113 @@ def run(
         result = BuiltinAdapter().execute(manifest, target=execution_target)
     except AdapterError as exc:
         _fail(str(exc))
+
+    if output is not None:
+        try:
+            hardware_profile = _detect_optional_hardware_profile()
+            record = create_run_record(
+                command=_reproducible_run_command(model, target, result),
+                manifest=manifest,
+                target=target.value,
+                hardware_profile=hardware_profile,
+                result=result,
+            )
+            save_run_record(record, output, force=force)
+        except ResultStoreError as exc:
+            _fail(str(exc))
     typer.echo(result.model_dump_json(indent=2))
+
+
+def _detect_optional_hardware_profile() -> HardwareProfile | None:
+    """Capture hardware when possible without invalidating a successful run."""
+
+    try:
+        return _hardware_probe().detect()
+    except HardwareProbeError:
+        return None
+
+
+def _reproducible_run_command(
+    model: str,
+    target: TargetName,
+    result: BenchmarkResult,
+) -> list[str]:
+    """Describe the command, including controlled non-default GEMM sizing."""
+
+    command = ["rvai", "run", model, "--target", target.value]
+    dimensions = result.matrix
+    iterations = result.iterations
+    defaults = (
+        BuiltinAdapterDefaults.DEFAULT_M,
+        BuiltinAdapterDefaults.DEFAULT_N,
+        BuiltinAdapterDefaults.DEFAULT_K,
+        BuiltinAdapterDefaults.DEFAULT_ITERATIONS,
+    )
+    actual = (dimensions.m, dimensions.n, dimensions.k, iterations)
+    if actual != defaults:
+        command = [
+            "env",
+            f"RVAI_GEMM_M={dimensions.m}",
+            f"RVAI_GEMM_N={dimensions.n}",
+            f"RVAI_GEMM_K={dimensions.k}",
+            f"RVAI_GEMM_ITERATIONS={iterations}",
+            *command,
+        ]
+    return command
+
+
+@app.command()
+def report(
+    result_path: Path = typer.Argument(..., help="Saved RunRecord JSON file."),
+    report_format: ReportFormat = typer.Option(
+        ReportFormat.MARKDOWN,
+        "--format",
+        help="Report output format.",
+    ),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        help="Write the report to a file instead of stdout.",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Overwrite an existing --output file.",
+    ),
+) -> None:
+    """Render a validated benchmark RunRecord."""
+
+    if force and output is None:
+        _fail("--force requires --output")
+    try:
+        record = load_run_record(result_path)
+        if report_format is ReportFormat.MARKDOWN:
+            rendered = render_markdown(record)
+        else:  # pragma: no cover - Typer rejects unsupported enum values.
+            _fail(f"Unsupported report format: {report_format}")
+        if output is not None:
+            save_markdown_report(rendered, output, force=force)
+        else:
+            typer.echo(rendered, nl=False)
+    except (ReportRenderError, ResultStoreError) as exc:
+        _fail(str(exc))
+
+
+@app.command()
+def compare(
+    left_path: Path = typer.Argument(..., help="First saved RunRecord JSON file."),
+    right_path: Path = typer.Argument(..., help="Second saved RunRecord JSON file."),
+) -> None:
+    """Compare two benchmark records without unsafe performance claims."""
+
+    try:
+        comparison = compare_run_records(
+            load_run_record(left_path),
+            load_run_record(right_path),
+        )
+    except ResultStoreError as exc:
+        _fail(str(exc))
+    typer.echo(comparison.model_dump_json(indent=2))
 
 
 @app.command()
