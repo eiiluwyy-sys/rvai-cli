@@ -26,8 +26,8 @@ dist/
 .DS_Store
 
 # Local model files and runtime output
-artifacts/
-reports/
+/artifacts/
+/reports/
 /results/
 rvai-cli-v*.zip
 *.gguf
