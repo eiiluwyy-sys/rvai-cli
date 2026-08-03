@@ -14,6 +14,7 @@ def test_registry_lists_expected_models() -> None:
     assert names == [
         "builtin-gemm-int8",
         "mobilenet-int8",
+        "mobilenet-v2-fp32-onnx",
         "qwen-small-int4",
     ]
 
