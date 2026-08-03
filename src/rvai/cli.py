@@ -14,7 +14,16 @@ from rvai.compatibility import (
 from rvai.hardware import HardwareProbe, HardwareProbeError, HardwareProfile
 from rvai.planner import RunPlanner
 from rvai.registry import ModelRegistry, RegistryError
-from rvai.results import ResultStoreError, create_run_record, save_run_record
+from rvai.results import (
+    ReportFormat,
+    ReportRenderError,
+    ResultStoreError,
+    create_run_record,
+    load_run_record,
+    render_markdown,
+    save_markdown_report,
+    save_run_record,
+)
 from rvai.targets import TargetName, create_target
 
 app = typer.Typer(
@@ -169,6 +178,43 @@ def _reproducible_run_command(
             *command,
         ]
     return command
+
+
+@app.command()
+def report(
+    result_path: Path = typer.Argument(..., help="Saved RunRecord JSON file."),
+    report_format: ReportFormat = typer.Option(
+        ReportFormat.MARKDOWN,
+        "--format",
+        help="Report output format.",
+    ),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        help="Write the report to a file instead of stdout.",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Overwrite an existing --output file.",
+    ),
+) -> None:
+    """Render a validated benchmark RunRecord."""
+
+    if force and output is None:
+        _fail("--force requires --output")
+    try:
+        record = load_run_record(result_path)
+        if report_format is ReportFormat.MARKDOWN:
+            rendered = render_markdown(record)
+        else:  # pragma: no cover - Typer rejects unsupported enum values.
+            _fail(f"Unsupported report format: {report_format}")
+        if output is not None:
+            save_markdown_report(rendered, output, force=force)
+        else:
+            typer.echo(rendered, nl=False)
+    except (ReportRenderError, ResultStoreError) as exc:
+        _fail(str(exc))
 
 
 @app.command()
