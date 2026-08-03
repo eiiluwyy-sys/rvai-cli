@@ -26,6 +26,16 @@ from rvai.model_pipeline.environment import (
     collect_software_environment,
     collect_source_revision,
 )
+from rvai.model_pipeline.package import (
+    EvidencePackageError,
+    MobileNetV2P43BPackageEntry,
+    MobileNetV2P43BPackageManifest,
+    build_evidence_package,
+    package_content_sha256,
+    validate_pilot_evidence,
+    verify_evidence_package,
+)
+from rvai.model_pipeline.report import ReportValidationError, render_comparison_markdown
 from rvai.model_pipeline.schema import (
     MobileNetV2P43BAcceptanceConfig,
     MobileNetV2P43BConfiguration,
@@ -46,6 +56,7 @@ from rvai.model_pipeline.schema import (
 __all__ = [
     "FROZEN_MOBILENET_V2_FP32_IDENTITY",
     "EnvironmentCaptureError",
+    "EvidencePackageError",
     "MobileNetV2P43BAcceptanceConfig",
     "MobileNetV2P43BConfiguration",
     "MobileNetV2P43BDatasetIdentity",
@@ -53,6 +64,8 @@ __all__ = [
     "MobileNetV2P43BDatasetSample",
     "MobileNetV2P43BExecutionEnvironment",
     "MobileNetV2P43BNormalizationConfig",
+    "MobileNetV2P43BPackageEntry",
+    "MobileNetV2P43BPackageManifest",
     "MobileNetV2P43BPipelineConfig",
     "MobileNetV2P43BPipelineIdentity",
     "MobileNetV2P43BPipelineInputDigests",
@@ -69,8 +82,10 @@ __all__ = [
     "PipelineConfigError",
     "PipelineIOError",
     "PipelinePathError",
+    "ReportValidationError",
     "StrictModel",
     "capture_reproducibility_record",
+    "build_evidence_package",
     "collect_execution_environment",
     "collect_software_environment",
     "collect_source_revision",
@@ -78,4 +93,8 @@ __all__ = [
     "load_mobilenet_v2_configuration",
     "load_pipeline_config",
     "load_source_model_config",
+    "package_content_sha256",
+    "render_comparison_markdown",
+    "validate_pilot_evidence",
+    "verify_evidence_package",
 ]
