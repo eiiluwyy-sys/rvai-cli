@@ -1,0 +1,19 @@
+schema_version: "1.0"
+
+dataset:
+  name: imagenet-calibration-example
+  version: example-v1
+  split: calibration
+  purpose: calibration
+  provenance: Example structure only; replace with a reviewed external dataset manifest.
+  license: Example metadata only; record the external dataset license.
+
+preprocessing: mobilenet-v2-imagenet-v1
+sample_order: manifest
+
+samples:
+  - id: calibration-000001
+    path: calibration/class-000/image-000001.jpg
+  - id: calibration-000002
+    path: calibration/class-001/image-000002.jpg
+    label: 1

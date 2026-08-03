@@ -93,3 +93,7 @@ python -m pytest
 ```
 
 详细范围与验收条件参见 [docs/mvp-v0.1.md](docs/mvp-v0.1.md)。
+
+MobileNetV2 FP32 到静态 INT8 ONNX 的可复现模型生产流程、冻结参数、证据要求
+与后续 Manifest 集成边界参见
+[docs/p4.3b-onnx-model-pipeline.md](docs/p4.3b-onnx-model-pipeline.md)。

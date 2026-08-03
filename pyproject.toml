@@ -24,6 +24,12 @@ onnx = [
   "onnxruntime>=1.17,<2",
   "Pillow>=10,<13",
 ]
+model-pipeline = [
+  "numpy>=1.24,<3",
+  "onnx>=1.16,<2",
+  "onnxruntime>=1.17,<2",
+  "Pillow>=10,<13",
+]
 dev = [
   "onnx>=1.16,<2",
   "pytest>=8,<9",

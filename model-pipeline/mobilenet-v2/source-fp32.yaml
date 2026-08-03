@@ -1,0 +1,9 @@
+schema_version: "1.0"
+
+model:
+  name: mobilenetv2-12
+  format: onnx
+  precision: fp32
+  filename: mobilenetv2-12.onnx
+  size_bytes: 13964571
+  sha256: c0c3f76d93fa3fd6580652a45618618a220fced18babf65774ed169de0432ad5
