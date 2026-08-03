@@ -1,5 +1,11 @@
 """Persistent benchmark result APIs."""
 
+from rvai.results.compare import (
+    NON_REPRESENTATIVE_MESSAGE,
+    ComparisonReport,
+    PerformanceComparison,
+    compare_run_records,
+)
 from rvai.results.schema import RunRecord
 from rvai.results.render import (
     ReportFormat,
@@ -20,8 +26,12 @@ __all__ = [
     "ResultStoreError",
     "ReportFormat",
     "ReportRenderError",
+    "ComparisonReport",
+    "NON_REPRESENTATIVE_MESSAGE",
+    "PerformanceComparison",
     "RunRecord",
     "create_run_record",
+    "compare_run_records",
     "digest_manifest",
     "escape_markdown",
     "load_run_record",

@@ -18,6 +18,7 @@ from rvai.results import (
     ReportFormat,
     ReportRenderError,
     ResultStoreError,
+    compare_run_records,
     create_run_record,
     load_run_record,
     render_markdown,
@@ -215,6 +216,23 @@ def report(
             typer.echo(rendered, nl=False)
     except (ReportRenderError, ResultStoreError) as exc:
         _fail(str(exc))
+
+
+@app.command()
+def compare(
+    left_path: Path = typer.Argument(..., help="First saved RunRecord JSON file."),
+    right_path: Path = typer.Argument(..., help="Second saved RunRecord JSON file."),
+) -> None:
+    """Compare two benchmark records without unsafe performance claims."""
+
+    try:
+        comparison = compare_run_records(
+            load_run_record(left_path),
+            load_run_record(right_path),
+        )
+    except ResultStoreError as exc:
+        _fail(str(exc))
+    typer.echo(comparison.model_dump_json(indent=2))
 
 
 @app.command()
