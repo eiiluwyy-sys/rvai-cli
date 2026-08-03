@@ -32,3 +32,4 @@ dist/
 rvai-cli-v*.zip
 *.gguf
 *.onnx
+!tests/fixtures/onnx/*.onnx
