@@ -24,6 +24,12 @@ from rvai.model_pipeline.dataset import (
     validate_dataset,
 )
 from rvai.model_pipeline.errors import ModelPipelineError
+from rvai.model_pipeline.environment import (
+    MobileNetV2P43BPipelineInputDigests,
+    MobileNetV2P43BPipelineOutputDigests,
+    MobileNetV2P43BReproducibilityRecord,
+    capture_reproducibility_record,
+)
 from rvai.model_pipeline.evaluate import (
     MobileNetV2P43BEvaluationRecord,
     evaluate_model,
@@ -99,6 +105,7 @@ class ProxyPilotResult:
     fp32_evaluation: MobileNetV2P43BEvaluationRecord
     int8_evaluation: MobileNetV2P43BEvaluationRecord
     comparison: MobileNetV2P43BComparisonRecord
+    reproducibility: MobileNetV2P43BReproducibilityRecord
 
 
 def run_synthetic_proxy_pilot(
@@ -155,6 +162,8 @@ def run_synthetic_proxy_pilot(
         loaded.source.model,
         onnx_module=modules.onnx,
     )
+    _write_record(records_directory, "pipeline-config.json", pipeline)
+    _write_record(records_directory, "source-model-config.json", loaded.source)
     _write_record(records_directory, "source-inspection.json", inspection)
 
     synthetic = generate_synthetic_dataset(
@@ -173,6 +182,17 @@ def run_synthetic_proxy_pilot(
     )
     _write_record(
         records_directory,
+        "calibration-manifest.json",
+        synthetic.calibration_manifest,
+    )
+    _write_record(
+        records_directory,
+        "evaluation-unlabeled-manifest.json",
+        synthetic.unlabeled_evaluation_manifest,
+    )
+    _write_record(records_directory, "generation.json", synthetic.record)
+    _write_record(
+        records_directory,
         "calibration-validation.json",
         calibration_dataset.record,
     )
@@ -187,6 +207,12 @@ def run_synthetic_proxy_pilot(
         dependencies=modules,
     )
     evaluation_dataset = validate_dataset(pseudo_labeled.manifest, synthetic.root)
+    _write_record(
+        records_directory,
+        "evaluation-manifest.json",
+        pseudo_labeled.manifest,
+    )
+    _write_record(records_directory, "pseudo-labels.json", pseudo_labeled.record)
     _write_record(
         records_directory,
         "evaluation-validation.json",
@@ -259,6 +285,42 @@ def run_synthetic_proxy_pilot(
         ),
     )
     _write_record(records_directory, "proxy-pilot-report.json", report)
+    reproducibility = capture_reproducibility_record(
+        dependencies=modules,
+        inputs=MobileNetV2P43BPipelineInputDigests(
+            pipeline_config_sha256=sha256_canonical_json(pipeline),
+            source_model_config_sha256=sha256_canonical_json(loaded.source),
+            source_fp32_model_sha256=inspection.model.sha256,
+            calibration_manifest_sha256=sha256_canonical_json(
+                synthetic.calibration_manifest
+            ),
+            unlabeled_evaluation_manifest_sha256=sha256_canonical_json(
+                synthetic.unlabeled_evaluation_manifest
+            ),
+            evaluation_manifest_sha256=sha256_canonical_json(
+                pseudo_labeled.manifest
+            ),
+        ),
+        outputs=MobileNetV2P43BPipelineOutputDigests(
+            source_inspection_sha256=sha256_canonical_json(inspection),
+            generation_record_sha256=sha256_canonical_json(synthetic.record),
+            pseudo_label_record_sha256=sha256_canonical_json(pseudo_labeled.record),
+            calibration_validation_sha256=sha256_canonical_json(
+                calibration_dataset.record
+            ),
+            evaluation_validation_sha256=sha256_canonical_json(
+                evaluation_dataset.record
+            ),
+            overlap_report_sha256=sha256_canonical_json(overlap),
+            quantization_record_sha256=sha256_canonical_json(quantization),
+            int8_model_sha256=quantization.artifact.sha256,
+            fp32_evaluation_sha256=sha256_canonical_json(fp32_evaluation),
+            int8_evaluation_sha256=sha256_canonical_json(int8_evaluation),
+            comparison_sha256=sha256_canonical_json(comparison),
+            proxy_pilot_report_sha256=sha256_canonical_json(report),
+        ),
+    )
+    _write_record(records_directory, "reproducibility.json", reproducibility)
     return ProxyPilotResult(
         report=report,
         source_inspection=inspection,
@@ -269,6 +331,7 @@ def run_synthetic_proxy_pilot(
         fp32_evaluation=fp32_evaluation,
         int8_evaluation=int8_evaluation,
         comparison=comparison,
+        reproducibility=reproducibility,
     )
 
 
