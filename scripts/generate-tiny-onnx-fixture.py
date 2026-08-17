@@ -11,7 +11,6 @@ from pathlib import Path
 import onnx
 from onnx import TensorProto, helper
 
-
 EXISTING_OPSET_VERSION = 13
 COMPATIBLE_IR_VERSION = 8
 DEFAULT_OUTPUT = (

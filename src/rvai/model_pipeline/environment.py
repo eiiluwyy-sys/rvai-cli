@@ -9,9 +9,9 @@ import subprocess
 from pathlib import Path
 from typing import Annotated, Literal
 
-import rvai
 from pydantic import Field, PositiveInt
 
+import rvai
 from rvai.model_pipeline.calibration import ModelPipelineDependencies
 from rvai.model_pipeline.errors import ModelPipelineError
 from rvai.model_pipeline.schema import Description, Sha256Digest, StrictModel

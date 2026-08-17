@@ -6,13 +6,12 @@ import pytest
 from rvai.inference import (
     InferenceInputError,
     InferenceOutputError,
-    classification_top_k,
     classification_label,
+    classification_top_k,
     load_onnx_dependencies,
     preprocess_image,
 )
 from rvai.manifest import ClassificationOutputSpec, ImageInputSpec
-
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "onnx"
 pytestmark = pytest.mark.skipif(

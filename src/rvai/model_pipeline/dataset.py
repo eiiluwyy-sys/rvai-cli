@@ -62,12 +62,15 @@ class MobileNetV2P43BDatasetValidationRecord(StrictModel):
         return self
 
 
+OverlapReason = Literal["sample_id", "content_sha256", "resolved_file"]
+
+
 class MobileNetV2P43BOverlapPair(StrictModel):
     """One calibration/evaluation pair with one or more overlap reasons."""
 
     calibration_id: Identifier
     evaluation_id: Identifier
-    reasons: tuple[Literal["sample_id", "content_sha256", "resolved_file"], ...]
+    reasons: tuple[OverlapReason, ...]
 
     @field_validator("reasons", mode="before")
     @classmethod
@@ -188,7 +191,7 @@ def detect_dataset_overlap(
     pairs: list[MobileNetV2P43BOverlapPair] = []
     for calibration_sample in calibration.samples:
         for evaluation_sample in evaluation.samples:
-            reasons: list[str] = []
+            reasons: list[OverlapReason] = []
             if calibration_sample.declaration.id == evaluation_sample.declaration.id:
                 reasons.append("sample_id")
             if (

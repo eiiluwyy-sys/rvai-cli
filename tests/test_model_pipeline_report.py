@@ -17,13 +17,11 @@ from rvai.model_pipeline.quantize import (
     MobileNetV2P43BQuantizedArtifact,
     MobileNetV2P43BQuantizedStructure,
 )
-from rvai.model_pipeline.report import ReportValidationError
-from rvai.model_pipeline.report import render_comparison_markdown
+from rvai.model_pipeline.report import ReportValidationError, render_comparison_markdown
 from rvai.model_pipeline.schema import (
     MobileNetV2P43BAcceptanceConfig,
     MobileNetV2P43BQuantizationConfig,
 )
-
 
 DIGEST = "a" * 64
 INT8_DIGEST = "b" * 64

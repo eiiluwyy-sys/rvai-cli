@@ -1,6 +1,6 @@
 import importlib.util
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 import pytest
 
@@ -14,7 +14,6 @@ from rvai.model_pipeline.config import load_pipeline_config
 from rvai.model_pipeline.dataset import validate_dataset
 from rvai.model_pipeline.io import canonical_json_bytes
 from rvai.model_pipeline.schema import MobileNetV2P43BDatasetManifest
-
 
 CONFIG_DIR = Path(__file__).parents[1] / "model-pipeline" / "mobilenet-v2"
 COMMITTED_IMAGE = Path(__file__).parent / "fixtures" / "onnx" / "red-image.ppm"

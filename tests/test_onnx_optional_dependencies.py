@@ -4,11 +4,10 @@ import pytest
 from typer.testing import CliRunner
 
 import rvai.cli as cli
-import rvai.inference.dependencies as dependency_module
 import rvai.hardware.runtime as runtime_module
+import rvai.inference.dependencies as dependency_module
 from rvai.hardware.runtime import RuntimeProbe
 from rvai.inference import InferenceDependencyError, load_onnx_dependencies
-
 
 runner = CliRunner()
 

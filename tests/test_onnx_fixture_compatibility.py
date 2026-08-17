@@ -6,7 +6,6 @@ import numpy
 import onnx
 import onnxruntime
 
-
 ROOT = Path(__file__).parents[1]
 FIXTURE_PATH = ROOT / "tests" / "fixtures" / "onnx" / "tiny-classifier.onnx"
 GENERATOR_PATH = ROOT / "scripts" / "generate-tiny-onnx-fixture.py"

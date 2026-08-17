@@ -4,6 +4,10 @@ RVAI CLI 是面向 RISC-V AI workload 的统一命令行入口。Python 控制�
 模型清单校验、硬件探测、兼容性判断和运行调度；首个原生 workload 使用
 C++ 实现 scalar INT8 GEMM，并由 CLI 通过 adapter 调用。
 
+当前 `main` 的完整能力矩阵、限制与下一里程碑参见
+[docs/project-status.md](docs/project-status.md)。版本变更参见
+[CHANGELOG.md](CHANGELOG.md)。
+
 ## 环境要求
 
 - Python 3.10 或 3.11
@@ -17,9 +21,10 @@ C++ 实现 scalar INT8 GEMM，并由 CLI 通过 adapter 调用。
 ## 安装
 
 ```bash
-python3.11 -m venv .venv
+uv python install 3.11
+uv venv --python 3.11
 source .venv/bin/activate
-python -m pip install -e ".[dev]"
+uv pip install -e ".[dev,onnx,model-pipeline]"
 ```
 
 ONNX 图片分类是可选功能，不会进入基础安装：
@@ -69,8 +74,9 @@ SSH 密码及其他凭据不得写入运行记录；未来新增认证或 Token 
 构造 `RunRecord` 前过滤敏感环境变量。用户提供的路径可能包含隐私信息，只有
 确实影响复现时才应保存。
 
-默认从当前目录的 `models/` 加载 Manifest。也可通过 `RVAI_MODELS_DIR`
-环境变量指定其他模型目录。
+安装包内置默认 Manifest。若当前目录存在 `models/`，则优先加载该目录；也可
+通过 `RVAI_MODELS_DIR` 环境变量显式指定其他模型目录。这样既支持仓库内开发，
+也支持从 wheel 安装后在任意目录运行。
 
 `builtin-gemm-int8` 会执行 `build/rvai-bench`，输出正确性、平均与 P95
 延迟、吞吐量及矩阵内存占用的 JSON。若二进制位于其他目录，可通过
@@ -90,6 +96,16 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 python -m pip install -e ".[dev,onnx]"
 python -m pytest
+```
+
+提交前的完整工程门禁还包括：
+
+```bash
+python -m ruff check .
+python -m mypy
+python -m pytest --cov=rvai
+python -m build
+python scripts/smoke_test_wheel.py dist/*.whl
 ```
 
 详细范围与验收条件参见 [docs/mvp-v0.1.md](docs/mvp-v0.1.md)。

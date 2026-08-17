@@ -56,9 +56,14 @@ def preprocess_image(
     array = (array - mean) / std
     tensor = numpy.transpose(array, (2, 0, 1))[numpy.newaxis, ...]
     tensor = numpy.ascontiguousarray(tensor, dtype=numpy.float32)
+    raw_shape = tuple(int(value) for value in tensor.shape)
+    if len(raw_shape) != 4:
+        raise InferenceInputError(
+            f"Prepared image tensor must have rank four, got {raw_shape}"
+        )
     return tensor, InputInfo(
         path=str(path),
         original_width=original_width,
         original_height=original_height,
-        tensor_shape=tuple(int(value) for value in tensor.shape),
+        tensor_shape=raw_shape,
     )

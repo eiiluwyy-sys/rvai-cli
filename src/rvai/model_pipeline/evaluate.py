@@ -23,8 +23,10 @@ from rvai.model_pipeline.calibration import (
 )
 from rvai.model_pipeline.dataset import ResolvedDatasetSample, ValidatedDataset
 from rvai.model_pipeline.errors import ModelPipelineError, PipelineIOError
-from rvai.model_pipeline.inspect import MobileNetV2P43BSourceInspectionRecord
-from rvai.model_pipeline.inspect import _batch_dimensions_compatible
+from rvai.model_pipeline.inspect import (
+    MobileNetV2P43BSourceInspectionRecord,
+    _batch_dimensions_compatible,
+)
 from rvai.model_pipeline.io import sha256_canonical_json, sha256_file
 from rvai.model_pipeline.quantize import MobileNetV2P43BQuantizationRecord
 from rvai.model_pipeline.schema import (

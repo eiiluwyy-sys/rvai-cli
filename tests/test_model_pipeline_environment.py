@@ -1,6 +1,6 @@
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
-import subprocess
 
 import pytest
 from pydantic import ValidationError
@@ -20,9 +20,11 @@ from rvai.model_pipeline.environment import (
     collect_source_revision,
 )
 from rvai.model_pipeline.errors import PipelineIOError
-from rvai.model_pipeline.io import canonical_json_bytes, canonical_json_text
-from rvai.model_pipeline.io import write_canonical_json
-
+from rvai.model_pipeline.io import (
+    canonical_json_bytes,
+    canonical_json_text,
+    write_canonical_json,
+)
 
 DIGEST = "a" * 64
 

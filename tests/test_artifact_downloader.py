@@ -9,12 +9,11 @@ from rvai.artifacts import (
     CHUNK_SIZE,
     ArtifactCache,
     ArtifactCacheError,
-    ArtifactDownloadError,
     ArtifactDownloader,
+    ArtifactDownloadError,
     ArtifactIntegrityError,
 )
 from rvai.manifest import ArtifactSpec
-
 
 MANIFEST_DIGEST = f"sha256:{'d' * 64}"
 

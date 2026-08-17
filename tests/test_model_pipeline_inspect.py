@@ -1,13 +1,12 @@
 import hashlib
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 import pytest
 
 from rvai.model_pipeline.inspect import SourceInspectionError, inspect_source_model
 from rvai.model_pipeline.io import canonical_json_bytes
 from rvai.model_pipeline.schema import MobileNetV2P43BSourceModelIdentity
-
 
 EXISTING_TINY_MODEL = Path(__file__).parent / "fixtures" / "onnx" / "tiny-classifier.onnx"
 

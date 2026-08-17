@@ -7,7 +7,6 @@ import pytest
 from rvai.adapters import AdapterError, BuiltinAdapter
 from rvai.registry import ModelRegistry
 
-
 MODELS_DIR = Path(__file__).parents[1] / "models"
 
 

@@ -4,7 +4,6 @@ import pytest
 
 from rvai.hardware.linux import HardwareProbeError, LinuxSystemProbe
 
-
 FIXTURES = Path(__file__).parent / "fixtures"
 
 

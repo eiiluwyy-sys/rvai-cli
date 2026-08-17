@@ -1,9 +1,9 @@
 import hashlib
 import importlib.util
-from pathlib import Path
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -17,9 +17,8 @@ from rvai.model_pipeline.environment import (
 )
 from rvai.model_pipeline.io import canonical_json_bytes, load_json
 from rvai.model_pipeline.package import (
-    EvidencePackageError,
-    MobileNetV2P43BPackageManifest,
     PACKAGE_PAYLOAD_PATHS,
+    EvidencePackageError,
     build_evidence_package,
     verify_evidence_package,
 )
@@ -29,7 +28,6 @@ from rvai.model_pipeline.schema import (
     MobileNetV2P43BSourceModelConfig,
     MobileNetV2P43BSourceModelIdentity,
 )
-
 
 CONFIG_DIR = Path(__file__).parents[1] / "model-pipeline" / "mobilenet-v2"
 HAS_PIPELINE_DEPENDENCIES = all(

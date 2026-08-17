@@ -7,11 +7,11 @@ from rvai.model_pipeline.config import (
     load_pipeline_config,
     load_source_model_config,
 )
-from rvai.model_pipeline.errors import (
-    ModelPipelineError,
-    PipelineConfigError,
-    PipelineIOError,
-    PipelinePathError,
+from rvai.model_pipeline.dataset_prepare import (
+    DatasetPreparationError,
+    MobileNetV2P43BDatasetPreparationRecord,
+    PreparedDatasetManifests,
+    prepare_numeric_imagefolder_manifests,
 )
 from rvai.model_pipeline.environment import (
     EnvironmentCaptureError,
@@ -26,6 +26,12 @@ from rvai.model_pipeline.environment import (
     collect_software_environment,
     collect_source_revision,
 )
+from rvai.model_pipeline.errors import (
+    ModelPipelineError,
+    PipelineConfigError,
+    PipelineIOError,
+    PipelinePathError,
+)
 from rvai.model_pipeline.package import (
     EvidencePackageError,
     MobileNetV2P43BPackageEntry,
@@ -34,6 +40,20 @@ from rvai.model_pipeline.package import (
     package_content_sha256,
     validate_pilot_evidence,
     verify_evidence_package,
+)
+from rvai.model_pipeline.production import (
+    MobileNetV2P43BProductionFailureRecord,
+    MobileNetV2P43BProductionReport,
+    MobileNetV2P43BProductionReproducibilityRecord,
+    ProductionRunError,
+    run_production_pipeline,
+    validate_production_evidence,
+)
+from rvai.model_pipeline.production_package import (
+    MobileNetV2P43BProductionPackageManifest,
+    ProductionPackageError,
+    build_production_evidence_package,
+    verify_production_evidence_package,
 )
 from rvai.model_pipeline.report import ReportValidationError, render_comparison_markdown
 from rvai.model_pipeline.schema import (
@@ -56,12 +76,14 @@ from rvai.model_pipeline.schema import (
 __all__ = [
     "FROZEN_MOBILENET_V2_FP32_IDENTITY",
     "EnvironmentCaptureError",
+    "DatasetPreparationError",
     "EvidencePackageError",
     "MobileNetV2P43BAcceptanceConfig",
     "MobileNetV2P43BConfiguration",
     "MobileNetV2P43BDatasetIdentity",
     "MobileNetV2P43BDatasetManifest",
     "MobileNetV2P43BDatasetSample",
+    "MobileNetV2P43BDatasetPreparationRecord",
     "MobileNetV2P43BExecutionEnvironment",
     "MobileNetV2P43BNormalizationConfig",
     "MobileNetV2P43BPackageEntry",
@@ -71,6 +93,10 @@ __all__ = [
     "MobileNetV2P43BPipelineInputDigests",
     "MobileNetV2P43BPipelineOutputDigests",
     "MobileNetV2P43BPreprocessingConfig",
+    "MobileNetV2P43BProductionFailureRecord",
+    "MobileNetV2P43BProductionPackageManifest",
+    "MobileNetV2P43BProductionReport",
+    "MobileNetV2P43BProductionReproducibilityRecord",
     "MobileNetV2P43BQuantizationConfig",
     "MobileNetV2P43BReproducibilityRecord",
     "MobileNetV2P43BSampleCountConfig",
@@ -82,10 +108,14 @@ __all__ = [
     "PipelineConfigError",
     "PipelineIOError",
     "PipelinePathError",
+    "ProductionPackageError",
+    "ProductionRunError",
+    "PreparedDatasetManifests",
     "ReportValidationError",
     "StrictModel",
     "capture_reproducibility_record",
     "build_evidence_package",
+    "build_production_evidence_package",
     "collect_execution_environment",
     "collect_software_environment",
     "collect_source_revision",
@@ -94,7 +124,11 @@ __all__ = [
     "load_pipeline_config",
     "load_source_model_config",
     "package_content_sha256",
+    "prepare_numeric_imagefolder_manifests",
     "render_comparison_markdown",
+    "run_production_pipeline",
     "validate_pilot_evidence",
+    "validate_production_evidence",
     "verify_evidence_package",
+    "verify_production_evidence_package",
 ]

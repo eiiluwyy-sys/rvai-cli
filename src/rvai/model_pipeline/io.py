@@ -17,7 +17,6 @@ from yaml.nodes import MappingNode
 
 from rvai.model_pipeline.errors import PipelineIOError
 
-
 ModelT = TypeVar("ModelT", bound=BaseModel)
 _CHUNK_SIZE = 1024 * 1024
 

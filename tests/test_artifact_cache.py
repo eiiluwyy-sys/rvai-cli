@@ -8,7 +8,6 @@ import rvai.artifacts.cache as cache_module
 from rvai.artifacts import ArtifactCache, ArtifactCacheError, CachedArtifactMetadata
 from rvai.manifest import ArtifactSpec
 
-
 SHA256 = "a" * 64
 MANIFEST_DIGEST = f"sha256:{'b' * 64}"
 

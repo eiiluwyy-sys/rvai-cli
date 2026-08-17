@@ -5,7 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from rvai.model_pipeline.errors import PipelineConfigError, PipelineIOError, PipelinePathError
+from rvai.model_pipeline.errors import (
+    PipelineConfigError,
+    PipelineIOError,
+    PipelinePathError,
+)
 from rvai.model_pipeline.io import load_yaml
 from rvai.model_pipeline.schema import (
     MobileNetV2P43BConfiguration,
@@ -14,7 +18,6 @@ from rvai.model_pipeline.schema import (
     MobileNetV2P43BSourceModelConfig,
     MobileNetV2P43BSourceModelIdentity,
 )
-
 
 FROZEN_MOBILENET_V2_FP32_IDENTITY = MobileNetV2P43BSourceModelIdentity(
     name="mobilenetv2-12",

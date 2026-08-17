@@ -6,7 +6,6 @@ from rvai.results.compare import (
     PerformanceComparison,
     compare_run_records,
 )
-from rvai.results.schema import RunRecord
 from rvai.results.render import (
     ReportFormat,
     ReportRenderError,
@@ -14,6 +13,7 @@ from rvai.results.render import (
     render_markdown,
     save_markdown_report,
 )
+from rvai.results.schema import RunRecord
 from rvai.results.store import (
     ResultStoreError,
     create_run_record,

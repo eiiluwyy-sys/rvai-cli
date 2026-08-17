@@ -8,7 +8,6 @@ from rvai.adapters import OnnxRuntimeAdapter
 from rvai.inference import InferenceError, load_onnx_dependencies
 from rvai.manifest import ModelManifest
 
-
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "onnx"
 MODEL_PATH = FIXTURE_DIR / "tiny-classifier.onnx"
 IMAGE_PATH = FIXTURE_DIR / "red-image.ppm"

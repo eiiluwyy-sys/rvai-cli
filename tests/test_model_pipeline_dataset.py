@@ -1,6 +1,6 @@
 import hashlib
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 import pytest
 
@@ -13,7 +13,6 @@ from rvai.model_pipeline.dataset import (
 )
 from rvai.model_pipeline.io import canonical_json_bytes, canonical_json_text
 from rvai.model_pipeline.schema import MobileNetV2P43BDatasetManifest
-
 
 COMMITTED_IMAGE = Path(__file__).parent / "fixtures" / "onnx" / "red-image.ppm"
 
