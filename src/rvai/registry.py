@@ -21,7 +21,7 @@ class ModelNotFoundError(RegistryError):
 
 
 def default_models_dir() -> Path:
-    """Resolve the model directory for local and editable installations."""
+    """Resolve user-provided manifests before packaged built-in manifests."""
 
     configured = os.getenv("RVAI_MODELS_DIR")
     if configured:
@@ -31,7 +31,7 @@ def default_models_dir() -> Path:
     if current_models.is_dir():
         return current_models
 
-    return Path(__file__).resolve().parents[2] / "models"
+    return Path(__file__).resolve().parent / "data" / "models"
 
 
 class ModelRegistry:

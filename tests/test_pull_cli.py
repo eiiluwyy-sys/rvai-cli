@@ -20,7 +20,6 @@ from rvai.hardware.schema import (
     RuntimeStatus,
 )
 
-
 runner = CliRunner()
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "artifacts"
 TINY_MODEL = FIXTURE_DIR / "tiny-model.bin"

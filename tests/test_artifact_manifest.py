@@ -8,7 +8,6 @@ from rvai.manifest import ArtifactSpec, ModelManifest
 from rvai.registry import ModelRegistry
 from rvai.results import digest_manifest
 
-
 MODELS_DIR = Path(__file__).parents[1] / "models"
 
 

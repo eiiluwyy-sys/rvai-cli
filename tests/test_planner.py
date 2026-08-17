@@ -5,7 +5,6 @@ import pytest
 from rvai.planner import RunPlanner
 from rvai.registry import ModelRegistry
 
-
 MODELS_DIR = Path(__file__).parents[1] / "models"
 
 

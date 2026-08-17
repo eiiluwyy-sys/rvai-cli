@@ -13,7 +13,6 @@ from rvai.hardware.schema import (
 from rvai.manifest import ModelManifest
 from rvai.registry import ModelRegistry
 
-
 MODELS_DIR = Path(__file__).parents[1] / "models"
 
 

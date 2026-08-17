@@ -4,8 +4,8 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 import time
+from pathlib import Path
 
 from rvai.model_pipeline.io import canonical_json_text
 from rvai.model_pipeline.pilot import run_synthetic_proxy_pilot

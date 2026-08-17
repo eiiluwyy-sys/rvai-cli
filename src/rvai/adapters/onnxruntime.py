@@ -61,7 +61,13 @@ class OnnxRuntimeAdapter:
     ) -> InferenceResult:
         """Execute one native CPU inference and return validated Top-K JSON data."""
 
-        if not self.supports(manifest):
+        input_spec = manifest.input
+        output_spec = manifest.output
+        if (
+            not self.supports(manifest)
+            or input_spec is None
+            or output_spec is None
+        ):
             raise InferenceError(
                 f"OnnxRuntimeAdapter does not support model {manifest.name}; "
                 "expected FP32 image classification with input/output processing"
@@ -69,7 +75,7 @@ class OnnxRuntimeAdapter:
 
         tensor, input_info = preprocess_image(
             input_path,
-            manifest.input,
+            input_spec,
             numpy=self.dependencies.numpy,
             pillow_image=self.dependencies.pillow_image,
         )
@@ -98,7 +104,7 @@ class OnnxRuntimeAdapter:
             raise InferenceError("ONNX Runtime returned no output values")
         predictions = classification_top_k(
             values[0],
-            manifest.output,
+            output_spec,
             numpy=self.dependencies.numpy,
         )
         provider = providers[0] if providers else "CPUExecutionProvider"

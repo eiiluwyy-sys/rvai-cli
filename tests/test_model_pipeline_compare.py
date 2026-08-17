@@ -10,7 +10,6 @@ from rvai.model_pipeline.evaluate import (
     MobileNetV2P43BSampleEvaluation,
 )
 
-
 DIGEST = "a" * 64
 
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Literal
 
 from rvai.hardware.schema import MemoryInfo, RiscVInfo
 
@@ -42,7 +43,7 @@ class LinuxSystemProbe:
         if architecture not in {"riscv32", "riscv64"}:
             return RiscVInfo(is_riscv=False)
 
-        xlen = 64 if architecture == "riscv64" else 32
+        xlen: Literal[32, 64] = 64 if architecture == "riscv64" else 32
         values = self._read_key_values(self.cpuinfo_path)
         isa = values.get("isa")
         if isa is None:

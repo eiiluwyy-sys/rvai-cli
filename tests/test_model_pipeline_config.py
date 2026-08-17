@@ -1,5 +1,5 @@
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 import pytest
 
@@ -12,7 +12,6 @@ from rvai.model_pipeline import (
     load_pipeline_config,
     load_source_model_config,
 )
-
 
 CONFIG_DIR = Path(__file__).parents[1] / "model-pipeline" / "mobilenet-v2"
 

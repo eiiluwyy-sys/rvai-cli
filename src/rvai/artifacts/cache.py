@@ -15,7 +15,6 @@ from rvai.artifacts.errors import ArtifactCacheError
 from rvai.artifacts.schema import CachedArtifactMetadata
 from rvai.manifest import ArtifactSpec
 
-
 _SAFE_MODEL_NAME = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
 
 

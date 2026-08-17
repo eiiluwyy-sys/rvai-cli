@@ -6,7 +6,6 @@ import rvai.cli as cli
 from rvai.hardware import HardwareProbeError
 from rvai.results import NON_REPRESENTATIVE_MESSAGE, save_run_record
 
-
 runner = CliRunner()
 
 

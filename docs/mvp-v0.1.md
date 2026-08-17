@@ -1,5 +1,9 @@
 # RVAI CLI V0.1
 
+> Historical specification: this document records the original V0.1 acceptance
+> boundary. The current feature matrix and active milestone are maintained in
+> [project-status.md](project-status.md).
+
 ## 目标
 
 建立面向 RISC-V AI 模型运行的统一 CLI 原型，

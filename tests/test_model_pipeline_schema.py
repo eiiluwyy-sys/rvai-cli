@@ -9,7 +9,6 @@ from rvai.model_pipeline.schema import (
     MobileNetV2P43BSourceModelConfig,
 )
 
-
 CONFIG_DIR = Path(__file__).parents[1] / "model-pipeline" / "mobilenet-v2"
 
 

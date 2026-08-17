@@ -6,7 +6,6 @@ from typer.testing import CliRunner
 import rvai.cli as cli
 from rvai.adapters import BenchmarkResult
 
-
 runner = CliRunner()
 
 

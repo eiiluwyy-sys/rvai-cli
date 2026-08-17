@@ -9,7 +9,6 @@ from pydantic import Field, NonNegativeFloat, model_validator
 from rvai.adapters import BenchmarkResult
 from rvai.results.schema import RunRecord, StrictModel
 
-
 NON_REPRESENTATIVE_MESSAGE = (
     "Performance ratio is unavailable because at least one result was produced "
     "in a non-representative execution environment."

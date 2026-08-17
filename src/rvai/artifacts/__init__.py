@@ -1,7 +1,7 @@
 """Verified model artifact cache, download, and resolution APIs."""
 
 from rvai.artifacts.cache import ArtifactCache
-from rvai.artifacts.downloader import ArtifactDownloader, CHUNK_SIZE
+from rvai.artifacts.downloader import CHUNK_SIZE, ArtifactDownloader
 from rvai.artifacts.errors import (
     ArtifactCacheError,
     ArtifactDownloadError,

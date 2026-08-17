@@ -9,7 +9,6 @@ from rvai.hardware.linux import HardwareProbeError, LinuxSystemProbe
 from rvai.hardware.runtime import RuntimeProbe
 from rvai.hardware.schema import CpuInfo, HardwareProfile, PlatformInfo
 
-
 _ARCHITECTURE_ALIASES = {
     "amd64": "x86_64",
     "x86_64": "x86_64",

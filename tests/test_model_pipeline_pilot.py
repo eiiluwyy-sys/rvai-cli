@@ -25,7 +25,6 @@ from rvai.model_pipeline.synthetic import (
     MobileNetV2P43BSyntheticGenerationRecord,
 )
 
-
 CONFIG_DIR = Path(__file__).parents[1] / "model-pipeline" / "mobilenet-v2"
 HAS_PIPELINE_DEPENDENCIES = all(
     importlib.util.find_spec(module) is not None

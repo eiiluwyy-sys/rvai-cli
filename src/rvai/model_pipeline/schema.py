@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from pathlib import PurePosixPath
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Final, Literal
 
 from pydantic import (
     AfterValidator,
@@ -17,8 +17,7 @@ from pydantic import (
     model_validator,
 )
 
-
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION: Final[Literal["1.0"]] = "1.0"
 _DRIVE_PREFIX = re.compile(r"^[A-Za-z]:")
 
 
@@ -195,10 +194,13 @@ class MobileNetV2P43BSampleCountConfig(StrictModel):
 class MobileNetV2P43BAcceptanceConfig(StrictModel):
     """Frozen engineering acceptance gates for the first production run."""
 
-    max_top1_drop_percentage_points: Literal[1.0]
-    max_top5_drop_percentage_points: Literal[1.0]
-    min_model_size_reduction_ratio: Literal[0.50]
-    min_top1_agreement_ratio: Literal[0.95]
+    # Python's typing specification excludes float Literal values, while
+    # Pydantic intentionally uses them here as exact runtime configuration
+    # locks for the frozen first production run.
+    max_top1_drop_percentage_points: Literal[1.0]  # type: ignore[valid-type]
+    max_top5_drop_percentage_points: Literal[1.0]  # type: ignore[valid-type]
+    min_model_size_reduction_ratio: Literal[0.50]  # type: ignore[valid-type]
+    min_top1_agreement_ratio: Literal[0.95]  # type: ignore[valid-type]
     require_zero_inference_failures: Literal[True]
     require_finite_outputs: Literal[True]
 

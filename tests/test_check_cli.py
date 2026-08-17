@@ -14,7 +14,6 @@ from rvai.hardware.schema import (
     RuntimeStatus,
 )
 
-
 runner = CliRunner()
 
 

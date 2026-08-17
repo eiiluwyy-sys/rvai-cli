@@ -13,7 +13,6 @@ from rvai.inference import InferenceDependencyError
 from rvai.manifest import ModelManifest
 from rvai.results import digest_manifest
 
-
 runner = CliRunner()
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "onnx"
 MODEL_PATH = FIXTURE_DIR / "tiny-classifier.onnx"

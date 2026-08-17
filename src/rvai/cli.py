@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import NoReturn
 
 import typer
 
@@ -15,8 +16,8 @@ from rvai.adapters.builtin import BuiltinAdapter as BuiltinAdapterDefaults
 from rvai.artifacts import (
     ArtifactCache,
     ArtifactCacheError,
-    ArtifactDownloadError,
     ArtifactDownloader,
+    ArtifactDownloadError,
     ArtifactIntegrityError,
     ArtifactNotCachedError,
     ArtifactNotDeclaredError,
@@ -69,7 +70,7 @@ def _available_adapters(manifest: ModelManifest) -> tuple[str, ...]:
     return tuple(adapters)
 
 
-def _fail(message: str) -> None:
+def _fail(message: str) -> NoReturn:
     typer.echo(f"Error: {message}", err=True)
     raise typer.Exit(code=1)
 

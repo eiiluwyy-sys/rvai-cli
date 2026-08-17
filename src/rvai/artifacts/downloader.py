@@ -10,7 +10,7 @@ import urllib.request
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import BinaryIO, ContextManager
+from typing import BinaryIO, ContextManager, cast
 
 from rvai.artifacts.cache import ArtifactCache
 from rvai.artifacts.errors import (
@@ -20,7 +20,6 @@ from rvai.artifacts.errors import (
 )
 from rvai.artifacts.schema import CachedArtifactMetadata, DownloadResult
 from rvai.manifest import ArtifactSpec
-
 
 CHUNK_SIZE = 1024 * 1024
 UrlOpen = Callable[..., ContextManager[BinaryIO]]
@@ -125,7 +124,7 @@ class ArtifactDownloader:
                 temporary_path = Path(output.name)
                 actual_sha256, actual_size = self._stream_download(
                     spec,
-                    output,
+                    cast(BinaryIO, output),
                     timeout_seconds,
                 )
                 if spec.size_bytes is not None and actual_size != spec.size_bytes:

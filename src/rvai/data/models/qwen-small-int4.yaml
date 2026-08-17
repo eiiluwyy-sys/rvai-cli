@@ -1,0 +1,15 @@
+name: qwen-small-int4
+display_name: Qwen Small INT4
+
+task: chat
+format: gguf
+quantization: int4
+runtime: llama_cpp
+
+resources:
+  min_memory_mb: 2048
+  recommended_threads: auto
+
+riscv:
+  require_rv64: true
+  prefer_rvv: true
