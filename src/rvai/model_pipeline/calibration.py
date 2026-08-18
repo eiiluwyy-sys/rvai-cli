@@ -142,12 +142,19 @@ class ManifestCalibrationDataReader:
         self.preprocessing = preprocessing
         self.dependencies = dependencies or load_model_pipeline_dependencies()
         self._input_spec = _image_input_spec(preprocessing)
-        self._index = 0
+        self._start_index = 0
+        self._end_index = len(self.selection.samples)
+        self._index = self._start_index
+
+    def __len__(self) -> int:
+        """Return the full selected size required by ORT strided calibration."""
+
+        return len(self.selection.samples)
 
     def get_next(self) -> dict[str, Any] | None:
         """Return the next preprocessed tensor or the required end sentinel."""
 
-        if self._index >= len(self.selection.samples):
+        if self._index >= self._end_index:
             return None
         sample = self.selection.samples[self._index]
         self._index += 1
@@ -167,7 +174,27 @@ class ManifestCalibrationDataReader:
     def rewind(self) -> None:
         """Restart deterministic iteration at the first selected sample."""
 
-        self._index = 0
+        self._index = self._start_index
+
+    def set_range(self, *, start_index: int, end_index: int) -> None:
+        """Select one validated half-open chunk for bounded-memory calibration."""
+
+        size = len(self.selection.samples)
+        if (
+            isinstance(start_index, bool)
+            or isinstance(end_index, bool)
+            or not isinstance(start_index, int)
+            or not isinstance(end_index, int)
+            or start_index < 0
+            or end_index <= start_index
+            or end_index > size
+        ):
+            raise CalibrationError(
+                f"Calibration range must satisfy 0 <= start < end <= {size}"
+            )
+        self._start_index = start_index
+        self._end_index = end_index
+        self._index = start_index
 
 
 def _image_input_spec(

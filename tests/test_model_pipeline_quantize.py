@@ -13,9 +13,14 @@ from rvai.model_pipeline.config import load_pipeline_config
 from rvai.model_pipeline.dataset import validate_dataset
 from rvai.model_pipeline.inspect import inspect_source_model
 from rvai.model_pipeline.io import canonical_json_bytes, sha256_file
-from rvai.model_pipeline.quantize import QuantizationError, quantize_static_qdq
+from rvai.model_pipeline.quantize import (
+    QuantizationError,
+    _reviewed_quantization_arguments,
+    quantize_static_qdq,
+)
 from rvai.model_pipeline.schema import (
     MobileNetV2P43BDatasetManifest,
+    MobileNetV2P43BQuantizationV2Config,
     MobileNetV2P43BSourceModelIdentity,
 )
 
@@ -160,6 +165,52 @@ def test_static_quantization_produces_checked_qdq_artifact(tmp_path: Path) -> No
     assert record.calibration_sample_ids == ("sample-0", "sample-1")
     assert canonical_json_bytes(record) == canonical_json_bytes(record)
     assert type(record).model_validate_json(canonical_json_bytes(record)) == record
+
+
+@pytest.mark.parametrize(
+    ("method", "percentile", "expected_method", "expected_extra"),
+    [
+        ("minmax", None, "MinMax", None),
+        ("entropy", None, "Entropy", None),
+        ("percentile", 99.999, "Percentile", {"CalibPercentile": 99.999}),
+    ],
+)
+def test_v2_quantization_maps_reviewed_onnxruntime_arguments(
+    method: str,
+    percentile: float | None,
+    expected_method: str,
+    expected_extra: dict[str, float] | None,
+) -> None:
+    configuration = MobileNetV2P43BQuantizationV2Config.model_validate(
+        {
+            "revision": "v2",
+            "method": "static",
+            "format": "qdq",
+            "activation_type": "quint8",
+            "weight_type": "qint8",
+            "per_channel": True,
+            "calibration_method": method,
+            "calibration_percentile": percentile,
+            "calibration_chunk_size": 2 if method != "minmax" else None,
+            "execution_provider": "CPUExecutionProvider",
+            "calibration_order": "manifest",
+            "op_types_to_quantize": ["Conv", "Clip", "Gemm"],
+            "nodes_to_exclude": ["Conv_88", "Conv_94"],
+            "op_types_to_exclude_output_quantization": ["Gemm"],
+        }
+    )
+    dependencies = load_model_pipeline_dependencies()
+    arguments = _reviewed_quantization_arguments(configuration, dependencies)
+
+    assert arguments["calibrate_method"].name == expected_method
+    assert arguments["op_types_to_quantize"] == ["Conv", "Clip", "Gemm"]
+    assert arguments["nodes_to_exclude"] == ["Conv_88", "Conv_94"]
+    combined_extra = {"OpTypesToExcludeOutputQuantization": ["Gemm"]}
+    if method != "minmax":
+        combined_extra["CalibStridedMinMax"] = 2
+    if expected_extra is not None:
+        combined_extra.update(expected_extra)
+    assert arguments.get("extra_options") == combined_extra
 
 
 def test_static_quantization_converts_opset_12_input_without_changing_source(

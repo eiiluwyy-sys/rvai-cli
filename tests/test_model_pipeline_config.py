@@ -14,6 +14,7 @@ from rvai.model_pipeline import (
 )
 
 CONFIG_DIR = Path(__file__).parents[1] / "model-pipeline" / "mobilenet-v2"
+V2_CONFIG_DIR = Path(__file__).parents[1] / "model-pipeline" / "mobilenet-v2-v2"
 
 
 def test_loads_committed_frozen_configuration() -> None:
@@ -49,6 +50,28 @@ def test_loads_committed_frozen_configuration() -> None:
     assert pipeline.acceptance.min_top1_agreement_ratio == 0.95
     assert pipeline.acceptance.require_zero_inference_failures is True
     assert pipeline.acceptance.require_finite_outputs is True
+
+
+def test_loads_explicit_reviewed_v2_configuration() -> None:
+    configuration = load_mobilenet_v2_configuration(V2_CONFIG_DIR)
+    quantization = configuration.pipeline.quantization
+
+    assert configuration.pipeline.pipeline.version == "p43b-v2-percentile-selective"
+    assert quantization.revision == "v2"
+    assert quantization.calibration_method == "percentile"
+    assert quantization.calibration_percentile == 99.999
+    assert quantization.calibration_chunk_size == 50
+    assert quantization.op_types_to_quantize == (
+        "Clip",
+        "Conv",
+        "Gather",
+        "Gemm",
+        "Reshape",
+        "Unsqueeze",
+    )
+    assert quantization.nodes_to_exclude == ("Conv_88", "Conv_94", "Conv_95")
+    assert quantization.op_types_to_exclude_output_quantization == ()
+    assert configuration.pipeline.acceptance.min_top1_agreement_ratio == 0.95
 
 
 def test_committed_example_manifests_are_strict_and_purpose_aware() -> None:

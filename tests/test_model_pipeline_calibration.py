@@ -132,6 +132,31 @@ def test_reader_preprocesses_and_rewinds_in_manifest_order(tmp_path: Path) -> No
     assert (first["image"] == repeated["image"]).all()
 
 
+@pytest.mark.skipif(
+    not HAS_PIPELINE_DEPENDENCIES,
+    reason="model-pipeline optional dependencies are not installed",
+)
+def test_reader_exposes_validated_chunks_for_bounded_memory(tmp_path: Path) -> None:
+    selection = select_calibration_samples(
+        validated_calibration(tmp_path, count=3), 3
+    )
+    pipeline = load_pipeline_config(CONFIG_DIR / "pipeline.yaml")
+    reader = ManifestCalibrationDataReader(
+        selection,
+        input_name="image",
+        preprocessing=pipeline.preprocessing,
+    )
+
+    assert len(reader) == 3
+    reader.set_range(start_index=1, end_index=2)
+    assert reader.get_next() is not None
+    assert reader.get_next() is None
+    reader.rewind()
+    assert reader.get_next() is not None
+    with pytest.raises(CalibrationError, match="0 <= start < end <= 3"):
+        reader.set_range(start_index=2, end_index=4)
+
+
 def test_dependency_loader_reports_dedicated_extra(monkeypatch) -> None:
     import rvai.model_pipeline.calibration as calibration_module
 
