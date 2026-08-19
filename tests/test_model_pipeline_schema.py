@@ -4,8 +4,10 @@ import pytest
 from pydantic import ValidationError
 
 from rvai.model_pipeline.schema import (
+    MobileNetV2P43BAcceptanceV3Config,
     MobileNetV2P43BDatasetManifest,
     MobileNetV2P43BPipelineConfig,
+    MobileNetV2P43BQuantizationV2Config,
     MobileNetV2P43BSourceModelConfig,
 )
 
@@ -164,3 +166,86 @@ def test_pipeline_rejects_non_frozen_quantization_or_acceptance_values() -> None
     data["acceptance"]["min_top1_agreement_ratio"] = 0.90
     with pytest.raises(ValidationError):
         MobileNetV2P43BPipelineConfig.model_validate(data)
+
+
+def test_v2_quantization_requires_explicit_calibration_and_exclusions() -> None:
+    common = {
+        "revision": "v2",
+        "method": "static",
+        "format": "qdq",
+        "activation_type": "quint8",
+        "weight_type": "qint8",
+        "per_channel": True,
+        "execution_provider": "CPUExecutionProvider",
+        "calibration_order": "manifest",
+        "op_types_to_quantize": ["Conv", "Clip", "Gemm"],
+        "nodes_to_exclude": ["Conv_88", "Conv_94"],
+        "op_types_to_exclude_output_quantization": ["Gemm"],
+    }
+    percentile = MobileNetV2P43BQuantizationV2Config.model_validate(
+        {
+            **common,
+            "calibration_method": "percentile",
+            "calibration_percentile": 99.999,
+            "calibration_chunk_size": 20,
+        }
+    )
+    assert percentile.op_types_to_quantize == ("Conv", "Clip", "Gemm")
+    assert percentile.nodes_to_exclude == ("Conv_88", "Conv_94")
+    assert percentile.op_types_to_exclude_output_quantization == ("Gemm",)
+
+    with pytest.raises(ValidationError, match="requires calibration_percentile"):
+        MobileNetV2P43BQuantizationV2Config.model_validate(
+            {
+                **common,
+                "calibration_method": "percentile",
+                "calibration_percentile": None,
+                "calibration_chunk_size": 20,
+            }
+        )
+    with pytest.raises(ValidationError, match="only valid for percentile"):
+        MobileNetV2P43BQuantizationV2Config.model_validate(
+            {
+                **common,
+                "calibration_method": "entropy",
+                "calibration_percentile": 99.999,
+                "calibration_chunk_size": 20,
+            }
+        )
+    with pytest.raises(ValidationError, match="requires calibration_chunk_size"):
+        MobileNetV2P43BQuantizationV2Config.model_validate(
+            {
+                **common,
+                "calibration_method": "entropy",
+                "calibration_percentile": None,
+                "calibration_chunk_size": None,
+            }
+        )
+    with pytest.raises(ValidationError, match="must not contain duplicates"):
+        MobileNetV2P43BQuantizationV2Config.model_validate(
+            {
+                **common,
+                "calibration_method": "minmax",
+                "calibration_percentile": None,
+                "calibration_chunk_size": None,
+                "nodes_to_exclude": ["Conv_88", "Conv_88"],
+            }
+        )
+
+
+def test_v3_acceptance_thresholds_are_frozen_and_explicit() -> None:
+    acceptance = MobileNetV2P43BAcceptanceV3Config(
+        revision="v3",
+        max_top1_drop_percentage_points=1.0,
+        max_top5_drop_percentage_points=1.0,
+        min_model_size_reduction_ratio=0.50,
+        min_top1_agreement_ratio=0.90,
+        max_correct_to_wrong_regression_ratio=0.03,
+        min_mean_top5_overlap_ratio=0.85,
+        require_zero_inference_failures=True,
+        require_finite_outputs=True,
+    )
+
+    assert acceptance.min_top1_agreement_ratio == 0.90
+    assert acceptance.max_correct_to_wrong_regression_ratio == 0.03
+    assert acceptance.min_mean_top5_overlap_ratio == 0.85

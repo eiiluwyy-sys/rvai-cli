@@ -1,5 +1,5 @@
 name: mobilenet-int8
-display_name: MobileNet INT8
+display_name: MobileNet V2 INT8 ONNX
 
 task: image_classification
 format: onnx
@@ -11,5 +11,33 @@ resources:
   recommended_threads: auto
 
 riscv:
-  require_rv64: true
+  require_rv64: false
   prefer_rvv: true
+
+input:
+  type: image
+  width: 224
+  height: 224
+  layout: nchw
+  dtype: float32
+  color_space: rgb
+  resize: bilinear
+  resize_shorter: 256
+  crop: center
+  normalize:
+    scale: 0.0039215686
+    mean: [0.485, 0.456, 0.406]
+    std: [0.229, 0.224, 0.225]
+
+output:
+  type: classification
+  top_k: 5
+  labels: imagenet-1k
+  scores: logits
+
+artifact:
+  filename: mobilenetv2-12-int8.onnx
+  sha256: 65d5c5b548253352d192850631cf5fb04e0dbf6bb4370ad16235106b0518a2c5
+  size_bytes: 6418149
+  media_type: application/onnx
+  license: Apache-2.0

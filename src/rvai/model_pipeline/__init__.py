@@ -58,6 +58,7 @@ from rvai.model_pipeline.production_package import (
 from rvai.model_pipeline.report import ReportValidationError, render_comparison_markdown
 from rvai.model_pipeline.schema import (
     MobileNetV2P43BAcceptanceConfig,
+    MobileNetV2P43BAcceptanceV3Config,
     MobileNetV2P43BConfiguration,
     MobileNetV2P43BDatasetIdentity,
     MobileNetV2P43BDatasetManifest,
@@ -67,6 +68,7 @@ from rvai.model_pipeline.schema import (
     MobileNetV2P43BPipelineIdentity,
     MobileNetV2P43BPreprocessingConfig,
     MobileNetV2P43BQuantizationConfig,
+    MobileNetV2P43BQuantizationV2Config,
     MobileNetV2P43BSampleCountConfig,
     MobileNetV2P43BSourceModelConfig,
     MobileNetV2P43BSourceModelIdentity,
@@ -79,6 +81,7 @@ __all__ = [
     "DatasetPreparationError",
     "EvidencePackageError",
     "MobileNetV2P43BAcceptanceConfig",
+    "MobileNetV2P43BAcceptanceV3Config",
     "MobileNetV2P43BConfiguration",
     "MobileNetV2P43BDatasetIdentity",
     "MobileNetV2P43BDatasetManifest",
@@ -98,6 +101,7 @@ __all__ = [
     "MobileNetV2P43BProductionReport",
     "MobileNetV2P43BProductionReproducibilityRecord",
     "MobileNetV2P43BQuantizationConfig",
+    "MobileNetV2P43BQuantizationV2Config",
     "MobileNetV2P43BReproducibilityRecord",
     "MobileNetV2P43BSampleCountConfig",
     "MobileNetV2P43BSourceModelConfig",

@@ -1,8 +1,9 @@
 # Native ONNX image inference
 
-P4.3A adds a local, native CPU inference path for one FP32 ONNX image
-classification model. It deliberately does not add QEMU ONNX execution,
-quantization, detection, batching, or multi-input model support.
+P4.3A adds a local, native CPU inference path for FP32 ONNX image
+classification. P4.3C extends that same manifest-driven path to the generated
+MobileNetV2 INT8 ONNX artifact. It deliberately does not add QEMU ONNX
+execution, detection, batching, or multi-input model support.
 
 ## Installation and isolation
 
@@ -62,7 +63,19 @@ rvai pull mobilenet-v2-fp32-onnx
 
 rvai infer mobilenet-v2-fp32-onnx \
   --input examples/images/demo.jpg
+
+rvai import-artifact mobilenet-int8 \
+  --file /external/models/mobilenetv2-12-int8.onnx
+
+rvai infer mobilenet-int8 \
+  --input examples/images/demo.jpg
 ```
+
+The INT8 Manifest records the exact generated filename, byte size, and
+SHA-256. Because the artifact is pre-provisioned rather than publicly hosted,
+`import-artifact` streams it into a temporary cache file, verifies identity,
+and atomically publishes it with matching metadata. A missing, truncated, or
+changed file is rejected without replacing an existing cache entry.
 
 The result is independent of `BenchmarkResult` and `RunRecord`:
 
@@ -140,4 +153,4 @@ CI does not download either from the network.
 - NCHW float32 tensors only
 - one model input and the first model output
 - no accuracy dataset evaluation
-- no QEMU, RVV, NPU, INT8, or physical-board inference
+- no QEMU, NPU, or remote execution transport inside the Adapter

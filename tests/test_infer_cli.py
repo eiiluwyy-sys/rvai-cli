@@ -196,3 +196,61 @@ def test_infer_reports_missing_input_as_user_error(tmp_path) -> None:
     assert result.exit_code == 1
     assert "Error: Cannot read input image" in result.output
     assert "Traceback" not in result.output
+
+
+def test_import_artifact_enables_offline_int8_inference(tmp_path) -> None:
+    models_dir = tmp_path / "models"
+    models_dir.mkdir()
+    data = manifest_data()
+    data["quantization"] = "int8"
+    del data["artifact"]["url"]
+    (models_dir / "tiny-classifier.yaml").write_text(
+        yaml.safe_dump(data), encoding="utf-8"
+    )
+    cache_dir = tmp_path / "cache"
+    environment = cli_environment(models_dir, cache_dir)
+
+    imported = runner.invoke(
+        cli.app,
+        [
+            "import-artifact",
+            "tiny-classifier",
+            "--file",
+            str(MODEL_PATH),
+        ],
+        env=environment,
+    )
+
+    assert imported.exit_code == 0
+    imported_payload = json.loads(imported.stdout)
+    assert imported_payload["status"] == "imported"
+    assert imported_payload["verified"] is True
+
+    inferred = runner.invoke(
+        cli.app,
+        ["infer", "tiny-classifier", "--input", str(IMAGE_PATH)],
+        env=environment,
+    )
+
+    assert inferred.exit_code == 0
+    assert json.loads(inferred.stdout)["predictions"][0]["index"] == 0
+
+
+def test_pull_recommends_import_for_local_only_artifact(tmp_path) -> None:
+    models_dir = tmp_path / "models"
+    models_dir.mkdir()
+    data = manifest_data()
+    del data["artifact"]["url"]
+    (models_dir / "tiny-classifier.yaml").write_text(
+        yaml.safe_dump(data), encoding="utf-8"
+    )
+
+    result = runner.invoke(
+        cli.app,
+        ["pull", "tiny-classifier"],
+        env=cli_environment(models_dir, tmp_path / "cache"),
+    )
+
+    assert result.exit_code == 1
+    assert "rvai import-artifact tiny-classifier --file PATH" in result.output
+    assert "Traceback" not in result.output

@@ -80,6 +80,23 @@ def test_adapter_executes_real_tiny_onnx_model() -> None:
     assert result.execution.latency_ms >= 0
 
 
+def test_adapter_executes_int8_manifest_with_float_tensor_contract() -> None:
+    payload = manifest().model_dump(mode="json")
+    payload["quantization"] = "int8"
+    int8_manifest = ModelManifest.model_validate(payload)
+
+    assert OnnxRuntimeAdapter.supports(int8_manifest) is True
+    result = OnnxRuntimeAdapter().infer(
+        int8_manifest,
+        model_path=MODEL_PATH,
+        input_path=IMAGE_PATH,
+    )
+
+    assert result.status == "success"
+    assert result.model == "tiny-classifier"
+    assert result.predictions[0].index == 0
+
+
 def test_adapter_rejects_runtime_input_shape_mismatch() -> None:
     dependencies = load_onnx_dependencies()
 

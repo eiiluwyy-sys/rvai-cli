@@ -10,6 +10,7 @@ from rvai.adapters import (
     AdapterError,
     BenchmarkResult,
     BuiltinAdapter,
+    LlamaCppAdapter,
     OnnxRuntimeAdapter,
 )
 from rvai.adapters.builtin import BuiltinAdapter as BuiltinAdapterDefaults
@@ -18,10 +19,13 @@ from rvai.artifacts import (
     ArtifactCacheError,
     ArtifactDownloader,
     ArtifactDownloadError,
+    ArtifactImporter,
+    ArtifactImportError,
     ArtifactIntegrityError,
     ArtifactNotCachedError,
     ArtifactNotDeclaredError,
     ArtifactResolver,
+    ImportResult,
     PullResult,
 )
 from rvai.compatibility import (
@@ -29,6 +33,7 @@ from rvai.compatibility import (
     CompatibilityMatcher,
     load_hardware_profile,
 )
+from rvai.generation import GenerationError
 from rvai.hardware import HardwareProbe, HardwareProbeError, HardwareProfile
 from rvai.inference import InferenceError, load_onnx_dependencies
 from rvai.manifest import ModelManifest
@@ -67,6 +72,8 @@ def _available_adapters(manifest: ModelManifest) -> tuple[str, ...]:
     adapters = ["builtin"]
     if OnnxRuntimeAdapter.supports(manifest):
         adapters.append("onnxruntime")
+    if LlamaCppAdapter.supports(manifest):
+        adapters.append("llama_cpp")
     return tuple(adapters)
 
 
@@ -128,6 +135,11 @@ def pull(
     spec = manifest.artifact
     if spec is None:
         _fail(f"Model '{model}' does not declare a downloadable artifact")
+    if spec.url is None:
+        _fail(
+            f"Model '{model}' artifact has no remote URL; import a verified local "
+            f"file with 'rvai import-artifact {model} --file PATH'"
+        )
 
     cache = (
         ArtifactCache(root=cache_dir)
@@ -169,6 +181,59 @@ def pull(
     typer.echo(result.model_dump_json(indent=2))
 
 
+@app.command("import-artifact")
+def import_artifact(
+    model: str = typer.Argument(..., help="Registered model name."),
+    file: Path = typer.Option(..., "--file", help="Pre-provisioned model file."),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Safely replace an existing cached artifact.",
+    ),
+    cache_dir: Path | None = typer.Option(
+        None,
+        "--cache-dir",
+        help="Override the model artifact cache root.",
+    ),
+) -> None:
+    """Verify and atomically import one local model artifact."""
+
+    try:
+        manifest = _registry().get(model)
+    except RegistryError as exc:
+        _fail(str(exc))
+    spec = manifest.artifact
+    if spec is None:
+        _fail(f"Model '{model}' does not declare an artifact")
+    cache = (
+        ArtifactCache(root=cache_dir)
+        if cache_dir is not None
+        else ArtifactCache()
+    )
+    destination = cache.artifact_path(model, spec)
+    try:
+        imported = ArtifactImporter(cache=cache).import_file(
+            model,
+            spec,
+            file,
+            destination,
+            manifest_digest=digest_manifest(manifest),
+            force=force,
+        )
+    except ArtifactIntegrityError as exc:
+        _fail(f"Artifact integrity check failed for '{model}': {exc}")
+    except (ArtifactCacheError, ArtifactImportError) as exc:
+        _fail(f"Cannot import artifact for '{model}': {exc}")
+    result = ImportResult(
+        status=imported.status,
+        model=imported.model,
+        path=imported.path,
+        sha256=imported.sha256,
+        size_bytes=imported.size_bytes,
+    )
+    typer.echo(result.model_dump_json(indent=2))
+
+
 @app.command()
 def infer(
     model: str = typer.Argument(..., help="Registered ONNX model name."),
@@ -178,7 +243,7 @@ def infer(
         help="Single image to classify.",
     ),
 ) -> None:
-    """Run native batch-one FP32 ONNX image classification."""
+    """Run native batch-one ONNX image classification."""
 
     try:
         manifest = _registry().get(model)
@@ -197,9 +262,10 @@ def infer(
         if compatibility.blocking_reasons:
             codes = {issue.code for issue in compatibility.blocking_reasons}
             if "model_file_missing" in codes:
+                install_hint = _artifact_install_hint(manifest)
                 _fail(
                     f"Model '{model}' artifact is not cached with matching metadata; "
-                    f"run 'rvai pull {model}' first"
+                    f"{install_hint}"
                 )
             reasons = "; ".join(
                 f"{issue.code}: {issue.message}"
@@ -213,13 +279,114 @@ def infer(
             input_path=input_path,
         )
     except (ArtifactNotCachedError, ArtifactNotDeclaredError) as exc:
-        _fail(f"{exc}; run 'rvai pull {model}' first")
+        _fail(f"{exc}; {_artifact_install_hint(manifest)}")
     except ArtifactIntegrityError as exc:
         _fail(f"Artifact verification failed for '{model}': {exc}")
     except (
         ArtifactCacheError,
         HardwareProbeError,
         InferenceError,
+        RegistryError,
+    ) as exc:
+        _fail(str(exc))
+    typer.echo(result.model_dump_json(indent=2))
+
+
+def _artifact_install_hint(manifest: ModelManifest) -> str:
+    spec = manifest.artifact
+    if spec is not None and spec.url is None:
+        return f"run 'rvai import-artifact {manifest.name} --file PATH' first"
+    return f"run 'rvai pull {manifest.name}' first"
+
+
+@app.command()
+def generate(
+    model: str = typer.Argument(..., help="Registered GGUF chat model name."),
+    prompt: str = typer.Option(..., "--prompt", help="Single user prompt."),
+    system_prompt: str | None = typer.Option(
+        None,
+        "--system-prompt",
+        help="Optional system instruction.",
+    ),
+    max_tokens: int | None = typer.Option(
+        None,
+        "--max-tokens",
+        help="Maximum number of generated tokens.",
+    ),
+    context_size: int | None = typer.Option(
+        None,
+        "--context-size",
+        help="Prompt context size in tokens.",
+    ),
+    threads: int | None = typer.Option(
+        None,
+        "--threads",
+        help="CPU generation threads.",
+    ),
+    temperature: float | None = typer.Option(
+        None,
+        "--temperature",
+        help="Sampling temperature.",
+    ),
+    seed: int | None = typer.Option(
+        None,
+        "--seed",
+        help="Sampling seed; use -1 for a random seed.",
+    ),
+    timeout: float = typer.Option(
+        600.0,
+        "--timeout",
+        help="Maximum generation time in seconds.",
+    ),
+) -> None:
+    """Generate one structured response with a local llama.cpp GGUF model."""
+
+    try:
+        manifest = _registry().get(model)
+        if not LlamaCppAdapter.supports(manifest):
+            _fail(f"Model '{model}' is not a supported GGUF chat model")
+        artifact_resolver = ArtifactResolver()
+        artifact_status = artifact_resolver.status(manifest)
+        hardware = HardwareProbe().detect()
+        compatibility = CompatibilityMatcher(
+            available_adapters=_available_adapters(manifest),
+            model_file_exists=lambda candidate: (
+                candidate.name == manifest.name and artifact_status.verified
+            ),
+        ).check(manifest, hardware)
+        if compatibility.blocking_reasons:
+            codes = {issue.code for issue in compatibility.blocking_reasons}
+            if "model_file_missing" in codes:
+                _fail(
+                    f"Model '{model}' artifact is not cached with matching metadata; "
+                    f"{_artifact_install_hint(manifest)}"
+                )
+            reasons = "; ".join(
+                f"{issue.code}: {issue.message}"
+                for issue in compatibility.blocking_reasons
+            )
+            _fail(f"Model '{model}' is not ready: {reasons}")
+        artifact = artifact_resolver.resolve(manifest)
+        result = LlamaCppAdapter().generate(
+            manifest,
+            model_path=artifact.path,
+            prompt=prompt,
+            system_prompt=system_prompt,
+            max_tokens=max_tokens,
+            context_size=context_size,
+            threads=threads,
+            temperature=temperature,
+            seed=seed,
+            timeout_seconds=timeout,
+        )
+    except (ArtifactNotCachedError, ArtifactNotDeclaredError) as exc:
+        _fail(f"{exc}; {_artifact_install_hint(manifest)}")
+    except ArtifactIntegrityError as exc:
+        _fail(f"Artifact verification failed for '{model}': {exc}")
+    except (
+        ArtifactCacheError,
+        GenerationError,
+        HardwareProbeError,
         RegistryError,
     ) as exc:
         _fail(str(exc))

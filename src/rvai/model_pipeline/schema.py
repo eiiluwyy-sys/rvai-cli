@@ -178,6 +178,72 @@ class MobileNetV2P43BQuantizationConfig(StrictModel):
     calibration_order: Literal["manifest"]
 
 
+class MobileNetV2P43BQuantizationV2Config(StrictModel):
+    """Explicit reviewed settings for post-baseline quantization experiments."""
+
+    revision: Literal["v2"]
+    method: Literal["static"]
+    format: Literal["qdq"]
+    activation_type: Literal["quint8"]
+    weight_type: Literal["qint8"]
+    per_channel: Literal[True]
+    calibration_method: Literal["minmax", "percentile", "entropy"]
+    calibration_percentile: float | None
+    calibration_chunk_size: PositiveInt | None
+    execution_provider: Literal["CPUExecutionProvider"]
+    calibration_order: Literal["manifest"]
+    op_types_to_quantize: tuple[Identifier, ...] = Field(min_length=1)
+    nodes_to_exclude: tuple[Identifier, ...]
+    op_types_to_exclude_output_quantization: tuple[Identifier, ...]
+
+    @field_validator(
+        "op_types_to_quantize",
+        "nodes_to_exclude",
+        "op_types_to_exclude_output_quantization",
+        mode="before",
+    )
+    @classmethod
+    def list_to_tuple(cls, value: Any) -> Any:
+        return tuple(value) if isinstance(value, list) else value
+
+    @model_validator(mode="after")
+    def validate_explicit_settings(self) -> "MobileNetV2P43BQuantizationV2Config":
+        if len(set(self.op_types_to_quantize)) != len(self.op_types_to_quantize):
+            raise ValueError("op_types_to_quantize must not contain duplicates")
+        if len(set(self.nodes_to_exclude)) != len(self.nodes_to_exclude):
+            raise ValueError("nodes_to_exclude must not contain duplicates")
+        if len(set(self.op_types_to_exclude_output_quantization)) != len(
+            self.op_types_to_exclude_output_quantization
+        ):
+            raise ValueError(
+                "op_types_to_exclude_output_quantization must not contain duplicates"
+            )
+        unknown_output_exclusions = set(
+            self.op_types_to_exclude_output_quantization
+        ) - set(self.op_types_to_quantize)
+        if unknown_output_exclusions:
+            raise ValueError(
+                "output-quantization exclusions must be present in op_types_to_quantize"
+            )
+        if self.calibration_method == "percentile":
+            if self.calibration_percentile is None or not (
+                0.0 < self.calibration_percentile < 100.0
+            ):
+                raise ValueError(
+                    "percentile calibration requires calibration_percentile in (0, 100)"
+                )
+        elif self.calibration_percentile is not None:
+            raise ValueError(
+                "calibration_percentile is only valid for percentile calibration"
+            )
+        if self.calibration_method in {"percentile", "entropy"}:
+            if self.calibration_chunk_size is None:
+                raise ValueError(
+                    "histogram calibration requires calibration_chunk_size"
+                )
+        return self
+
+
 class MobileNetV2P43BSampleCountConfig(StrictModel):
     """Pilot and production sample counts for one pipeline stage."""
 
@@ -205,16 +271,48 @@ class MobileNetV2P43BAcceptanceConfig(StrictModel):
     require_finite_outputs: Literal[True]
 
 
+class MobileNetV2P43BAcceptanceV3Config(StrictModel):
+    """Reviewed v3 gates for a non-safety-critical edge classifier."""
+
+    revision: Literal["v3"]
+    max_top1_drop_percentage_points: Literal[1.0]  # type: ignore[valid-type]
+    max_top5_drop_percentage_points: Literal[1.0]  # type: ignore[valid-type]
+    min_model_size_reduction_ratio: Literal[0.50]  # type: ignore[valid-type]
+    min_top1_agreement_ratio: Literal[0.90]  # type: ignore[valid-type]
+    max_correct_to_wrong_regression_ratio: Literal[0.03]  # type: ignore[valid-type]
+    min_mean_top5_overlap_ratio: Literal[0.85]  # type: ignore[valid-type]
+    require_zero_inference_failures: Literal[True]
+    require_finite_outputs: Literal[True]
+
+
 class MobileNetV2P43BPipelineConfig(StrictModel):
     """Complete deterministic configuration for MobileNetV2 P4.3B."""
 
     schema_version: Literal["1.0"] = SCHEMA_VERSION
     pipeline: MobileNetV2P43BPipelineIdentity
     preprocessing: MobileNetV2P43BPreprocessingConfig
-    quantization: MobileNetV2P43BQuantizationConfig
+    quantization: (
+        MobileNetV2P43BQuantizationConfig | MobileNetV2P43BQuantizationV2Config
+    )
     calibration: MobileNetV2P43BSampleCountConfig
     evaluation: MobileNetV2P43BSampleCountConfig
-    acceptance: MobileNetV2P43BAcceptanceConfig
+    acceptance: MobileNetV2P43BAcceptanceConfig | MobileNetV2P43BAcceptanceV3Config
+
+    @model_validator(mode="after")
+    def calibration_chunks_cover_configured_samples(
+        self,
+    ) -> "MobileNetV2P43BPipelineConfig":
+        quantization = self.quantization
+        if isinstance(quantization, MobileNetV2P43BQuantizationV2Config):
+            chunk_size = quantization.calibration_chunk_size
+            if chunk_size is not None and (
+                self.calibration.pilot_samples % chunk_size != 0
+                or self.calibration.production_samples % chunk_size != 0
+            ):
+                raise ValueError(
+                    "calibration_chunk_size must divide pilot and production samples"
+                )
+        return self
 
 
 class MobileNetV2P43BDatasetIdentity(StrictModel):

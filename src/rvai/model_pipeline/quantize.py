@@ -30,6 +30,7 @@ from rvai.model_pipeline.schema import (
     Identifier,
     MobileNetV2P43BPipelineConfig,
     MobileNetV2P43BQuantizationConfig,
+    MobileNetV2P43BQuantizationV2Config,
     PlainFilename,
     Sha256Digest,
     StrictModel,
@@ -67,7 +68,9 @@ class MobileNetV2P43BQuantizationRecord(StrictModel):
     calibration_manifest_sha256: Sha256Digest
     calibration_sample_count: PositiveInt
     calibration_sample_ids: tuple[Identifier, ...]
-    quantization: MobileNetV2P43BQuantizationConfig
+    quantization: (
+        MobileNetV2P43BQuantizationConfig | MobileNetV2P43BQuantizationV2Config
+    )
     execution_provider: Literal["CPUExecutionProvider"]
     onnxruntime_version: Description
     source_opset_version: PositiveInt
@@ -143,7 +146,7 @@ def quantize_static_qdq(
         )
         os.close(descriptor)
         temporary = Path(temporary_name)
-        quantize(
+        quantize_arguments: dict[str, Any] = dict(
             model_input=quantization_input,
             model_output=str(temporary),
             calibration_data_reader=reader,
@@ -151,10 +154,13 @@ def quantize_static_qdq(
             per_channel=True,
             activation_type=modules.quantization.QuantType.QUInt8,
             weight_type=modules.quantization.QuantType.QInt8,
-            calibrate_method=modules.quantization.CalibrationMethod.MinMax,
             calibration_providers=["CPUExecutionProvider"],
             use_external_data_format=False,
         )
+        quantize_arguments.update(
+            _reviewed_quantization_arguments(pipeline.quantization, modules)
+        )
+        quantize(**quantize_arguments)
         model = modules.onnx.load_model(str(temporary), load_external_data=False)
         modules.onnx.checker.check_model(model)
         inputs = _runtime_inputs(model)
@@ -222,6 +228,41 @@ def quantize_static_qdq(
                 pass
             except OSError:
                 pass
+
+
+def _reviewed_quantization_arguments(
+    configuration: (
+        MobileNetV2P43BQuantizationConfig | MobileNetV2P43BQuantizationV2Config
+    ),
+    modules: ModelPipelineDependencies,
+) -> dict[str, Any]:
+    """Translate a validated configuration without changing the v1 call surface."""
+
+    methods = {
+        "minmax": modules.quantization.CalibrationMethod.MinMax,
+        "percentile": modules.quantization.CalibrationMethod.Percentile,
+        "entropy": modules.quantization.CalibrationMethod.Entropy,
+    }
+    arguments: dict[str, Any] = {
+        "calibrate_method": methods[configuration.calibration_method]
+    }
+    if isinstance(configuration, MobileNetV2P43BQuantizationV2Config):
+        arguments["op_types_to_quantize"] = list(configuration.op_types_to_quantize)
+        arguments["nodes_to_exclude"] = list(configuration.nodes_to_exclude)
+        extra_options: dict[str, Any] = {}
+        if configuration.calibration_chunk_size is not None:
+            extra_options["CalibStridedMinMax"] = (
+                configuration.calibration_chunk_size
+            )
+        if configuration.op_types_to_exclude_output_quantization:
+            extra_options["OpTypesToExcludeOutputQuantization"] = list(
+                configuration.op_types_to_exclude_output_quantization
+            )
+        if configuration.calibration_percentile is not None:
+            extra_options["CalibPercentile"] = configuration.calibration_percentile
+        if extra_options:
+            arguments["extra_options"] = extra_options
+    return arguments
 
 
 def _verify_source_unchanged(

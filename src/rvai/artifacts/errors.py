@@ -21,5 +21,9 @@ class ArtifactDownloadError(ArtifactError):
     """Raised when an HTTP download cannot be completed."""
 
 
+class ArtifactImportError(ArtifactError):
+    """Raised when a local artifact cannot be imported safely."""
+
+
 class ArtifactCacheError(ArtifactError):
     """Raised when cache paths or metadata cannot be used safely."""

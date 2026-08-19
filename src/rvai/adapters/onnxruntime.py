@@ -1,4 +1,4 @@
-"""Native ONNX Runtime Adapter for batch-one FP32 image classification."""
+"""Native ONNX Runtime Adapter for batch-one image classification."""
 
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ class OnnxRuntimeAdapter:
             manifest.runtime == "onnxruntime"
             and manifest.format == "onnx"
             and manifest.task == "image_classification"
-            and manifest.quantization == "fp32"
+            and manifest.quantization in {"fp32", "int8"}
             and manifest.input is not None
             and manifest.output is not None
         )
@@ -70,7 +70,7 @@ class OnnxRuntimeAdapter:
         ):
             raise InferenceError(
                 f"OnnxRuntimeAdapter does not support model {manifest.name}; "
-                "expected FP32 image classification with input/output processing"
+                "expected FP32 or INT8 image classification with input/output processing"
             )
 
         tensor, input_info = preprocess_image(

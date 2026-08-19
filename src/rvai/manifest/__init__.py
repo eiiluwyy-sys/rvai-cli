@@ -8,6 +8,7 @@ from rvai.manifest.schema import (
     NormalizeSpec,
     ResourceRequirements,
     RiscVRequirements,
+    TextGenerationSpec,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "NormalizeSpec",
     "ResourceRequirements",
     "RiscVRequirements",
+    "TextGenerationSpec",
 ]

@@ -17,10 +17,12 @@ remain useful as acceptance records but are not the current feature list.
 | Run evidence | Available | Versioned records, Markdown rendering, and guarded comparisons |
 | FP32 ONNX classification | Available | Native CPU, one image, batch one, MobileNetV2 contract |
 | P4.3B INT8 production pipeline | Implemented | Class-balanced Manifest preparation, formal runner, failure retention, and deterministic package verification |
-| Production-labelled P4.3B execution | Awaiting external inputs | Requires the frozen FP32 artifact plus reviewed calibration/evaluation data |
-| MobileNetV2 INT8 CLI integration | Deferred | Requires reviewed production artifact and evidence |
-| Physical RISC-V execution | Not implemented | QEMU results are explicitly non-representative for performance |
-| RVV, NPU, and llama.cpp backends | Not implemented | Outside the active P4.3B scope |
+| Production-labelled P4.3B execution | Complete | Full 1,000/5,000 report and independently verified evidence package are preserved |
+| MobileNetV2 INT8 CLI integration | Implemented | Exact artifact identity, verified local import, readiness check, and native ONNX inference |
+| Physical RISC-V vision execution | Complete | Milk-V Jupiter paired FP32/INT8 evidence is preserved |
+| Qwen INT4 text generation | Implemented | Pinned official GGUF, llama.cpp adapter, structured generation result, and `rvai generate` |
+| SpacemiT llama.cpp build | Implemented | Pinned b10488 source build with RVV and SpacemiT CPU options |
+| NPU backend | Not implemented | Future hardware-specific integration |
 
 ## Supported development baseline
 
@@ -49,14 +51,8 @@ failure paths gain focused tests.
 
 ## Next product milestone
 
-The next validation milestone is the first external P4.3B production execution.
-It requires the frozen FP32 artifact, at least 1,000 calibration images, and an
-independently labelled evaluation Manifest targeting 5,000 images. The dormant
-`mobilenet-int8` Manifest must not be activated until the generated artifact and
-evidence package have been reviewed independently.
-
-After an accepted package, P4.3C should review and activate the INT8 Manifest
-and prove native x86 ONNX Runtime inference. P4.4 then brings up Milk-V Jupiter,
-captures its RV64/RVV/software profile, and selects a board runtime based on
-measured availability rather than assuming that the x86 ONNX Runtime package is
-installable on riscv64.
+The active milestone is physical Milk-V Jupiter validation of the pinned
+llama.cpp b10488 build and Qwen2.5-0.5B-Instruct Q4_0 model. The target evidence
+captures artifact identity, runtime build identity, prompt hashing, generated
+text, total latency, prompt processing rate, and token generation rate from one
+repeatable `rvai generate` command.

@@ -1,5 +1,5 @@
 name: qwen-small-int4
-display_name: Qwen Small INT4
+display_name: Qwen2.5 0.5B Instruct Q4_0
 
 task: chat
 format: gguf
@@ -8,8 +8,24 @@ runtime: llama_cpp
 
 resources:
   min_memory_mb: 2048
-  recommended_threads: auto
+  recommended_threads: 4
 
 riscv:
   require_rv64: true
   prefer_rvv: true
+
+artifact:
+  filename: qwen2.5-0.5b-instruct-q4_0.gguf
+  url: https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/9217f5db79a29953eb74d5343926648285ec7e67/qwen2.5-0.5b-instruct-q4_0.gguf?download=true
+  sha256: 7671c0c304e6ce5a7fc577bcb12aba01e2c155cc2efd29b2213c95b18edaf6ed
+  size_bytes: 428730208
+  media_type: application/vnd.gguf
+  license: Apache-2.0
+
+generation:
+  context_size: 2048
+  max_tokens: 64
+  temperature: 0.2
+  seed: 42
+  batch_size: 128
+  ubatch_size: 128
