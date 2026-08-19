@@ -38,7 +38,7 @@ class ArtifactSpec(StrictModel):
     """Verified remote model artifact declared by a Manifest."""
 
     filename: str = Field(min_length=1)
-    url: HttpUrl
+    url: HttpUrl | None = None
     sha256: str = Field(pattern=r"^[0-9a-fA-F]{64}$")
     size_bytes: PositiveInt | None = None
     media_type: str | None = None
@@ -59,7 +59,9 @@ class ArtifactSpec(StrictModel):
 
     @field_validator("url")
     @classmethod
-    def validate_url_scheme(cls, url: HttpUrl) -> HttpUrl:
+    def validate_url_scheme(cls, url: HttpUrl | None) -> HttpUrl | None:
+        if url is None:
+            return None
         if url.scheme not in {"http", "https"}:
             raise ValueError("artifact URL must use HTTP or HTTPS")
         return url
@@ -120,6 +122,17 @@ class ClassificationOutputSpec(StrictModel):
     scores: Literal["logits", "probabilities"] = "logits"
 
 
+class TextGenerationSpec(StrictModel):
+    """Manifest defaults for deterministic local text generation."""
+
+    context_size: PositiveInt = Field(default=2048, le=32768)
+    max_tokens: PositiveInt = Field(default=64, le=2048)
+    temperature: float = Field(default=0.2, ge=0.0, le=2.0)
+    seed: int = Field(default=42, ge=-1, le=2_147_483_647)
+    batch_size: PositiveInt = Field(default=128, le=2048)
+    ubatch_size: PositiveInt = Field(default=128, le=2048)
+
+
 class ModelManifest(StrictModel):
     """Validated model metadata loaded from a YAML file."""
 
@@ -134,3 +147,4 @@ class ModelManifest(StrictModel):
     artifact: ArtifactSpec | None = None
     input: ImageInputSpec | None = None
     output: ClassificationOutputSpec | None = None
+    generation: TextGenerationSpec | None = None

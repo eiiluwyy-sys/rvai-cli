@@ -40,12 +40,25 @@ def manifest_data() -> dict[str, object]:
 
 
 def test_existing_manifests_allow_missing_artifact() -> None:
-    for model in (
-        "qwen-small-int4",
-        "mobilenet-int8",
-        "builtin-gemm-int8",
-    ):
-        assert ModelRegistry(MODELS_DIR).get(model).artifact is None
+    assert ModelRegistry(MODELS_DIR).get("builtin-gemm-int8").artifact is None
+
+
+def test_qwen_int4_manifest_declares_pinned_official_gguf() -> None:
+    manifest = ModelRegistry(MODELS_DIR).get("qwen-small-int4")
+
+    assert manifest.task == "chat"
+    assert manifest.quantization == "int4"
+    assert manifest.runtime == "llama_cpp"
+    assert manifest.artifact is not None
+    assert manifest.artifact.filename == "qwen2.5-0.5b-instruct-q4_0.gguf"
+    assert manifest.artifact.size_bytes == 428_730_208
+    assert manifest.artifact.sha256 == (
+        "7671c0c304e6ce5a7fc577bcb12aba01e2c155cc2efd29b2213c95b18edaf6ed"
+    )
+    assert manifest.generation is not None
+    assert manifest.generation.context_size == 2048
+    assert manifest.generation.max_tokens == 64
+    assert manifest.resources.recommended_threads == 4
 
 
 def test_new_mobilenet_manifest_loads_verified_declaration() -> None:
@@ -64,11 +77,30 @@ def test_new_mobilenet_manifest_loads_verified_declaration() -> None:
     assert manifest.output.scores == "logits"
 
 
+def test_mobilenet_int8_manifest_declares_offline_artifact() -> None:
+    manifest = ModelRegistry(MODELS_DIR).get("mobilenet-int8")
+
+    assert manifest.quantization == "int8"
+    assert manifest.artifact is not None
+    assert manifest.artifact.url is None
+    assert manifest.artifact.filename == "mobilenetv2-12-int8.onnx"
+    assert manifest.artifact.size_bytes == 6_418_149
+    assert manifest.artifact.sha256 == (
+        "65d5c5b548253352d192850631cf5fb04e0dbf6bb4370ad16235106b0518a2c5"
+    )
+    assert manifest.riscv.require_rv64 is False
+    assert manifest.input is not None
+    assert manifest.input.resize_shorter == 256
+    assert manifest.output is not None
+    assert manifest.output.top_k == 5
+
+
 def test_existing_manifests_allow_missing_processing_configuration() -> None:
     manifest = ModelRegistry(MODELS_DIR).get("builtin-gemm-int8")
 
     assert manifest.input is None
     assert manifest.output is None
+    assert manifest.generation is None
 
 
 def test_image_input_rejects_non_positive_normalization_std() -> None:
@@ -161,6 +193,13 @@ def test_artifact_none_remains_valid() -> None:
     data["artifact"] = None
 
     assert ModelManifest.model_validate(data).artifact is None
+
+
+def test_artifact_url_may_be_omitted_for_local_import() -> None:
+    data = artifact_data()
+    del data["url"]
+
+    assert ArtifactSpec.model_validate(data).url is None
 
 
 @pytest.mark.parametrize("field", ["filename", "url", "sha256"])

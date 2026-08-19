@@ -32,6 +32,9 @@ dist/
 /artifacts/
 /reports/
 /results/
+/output/
+/tmp/
+/:memory:.ses
 rvai-cli-v*.zip
 *.gguf
 *.onnx

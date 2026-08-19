@@ -271,6 +271,20 @@ class MobileNetV2P43BAcceptanceConfig(StrictModel):
     require_finite_outputs: Literal[True]
 
 
+class MobileNetV2P43BAcceptanceV3Config(StrictModel):
+    """Reviewed v3 gates for a non-safety-critical edge classifier."""
+
+    revision: Literal["v3"]
+    max_top1_drop_percentage_points: Literal[1.0]  # type: ignore[valid-type]
+    max_top5_drop_percentage_points: Literal[1.0]  # type: ignore[valid-type]
+    min_model_size_reduction_ratio: Literal[0.50]  # type: ignore[valid-type]
+    min_top1_agreement_ratio: Literal[0.90]  # type: ignore[valid-type]
+    max_correct_to_wrong_regression_ratio: Literal[0.03]  # type: ignore[valid-type]
+    min_mean_top5_overlap_ratio: Literal[0.85]  # type: ignore[valid-type]
+    require_zero_inference_failures: Literal[True]
+    require_finite_outputs: Literal[True]
+
+
 class MobileNetV2P43BPipelineConfig(StrictModel):
     """Complete deterministic configuration for MobileNetV2 P4.3B."""
 
@@ -282,7 +296,7 @@ class MobileNetV2P43BPipelineConfig(StrictModel):
     )
     calibration: MobileNetV2P43BSampleCountConfig
     evaluation: MobileNetV2P43BSampleCountConfig
-    acceptance: MobileNetV2P43BAcceptanceConfig
+    acceptance: MobileNetV2P43BAcceptanceConfig | MobileNetV2P43BAcceptanceV3Config
 
     @model_validator(mode="after")
     def calibration_chunks_cover_configured_samples(

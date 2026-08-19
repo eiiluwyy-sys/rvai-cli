@@ -2,12 +2,14 @@
 
 from rvai.adapters.base import WorkloadAdapter
 from rvai.adapters.builtin import AdapterError, BenchmarkResult, BuiltinAdapter
+from rvai.adapters.llama_cpp import LlamaCppAdapter
 from rvai.adapters.onnxruntime import OnnxRuntimeAdapter
 
 __all__ = [
     "AdapterError",
     "BenchmarkResult",
     "BuiltinAdapter",
+    "LlamaCppAdapter",
     "OnnxRuntimeAdapter",
     "WorkloadAdapter",
 ]

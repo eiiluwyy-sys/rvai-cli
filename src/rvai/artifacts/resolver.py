@@ -40,7 +40,7 @@ class ArtifactResolver:
             expected = {
                 "model": manifest.name,
                 "filename": spec.filename,
-                "source_url": str(spec.url),
+                "source_url": _source_url(spec),
                 "sha256": spec.sha256,
                 "size_bytes": actual_size,
                 "manifest_digest": digest_manifest(manifest),
@@ -84,7 +84,7 @@ class ArtifactResolver:
                 verified = (
                     metadata.model == manifest.name
                     and metadata.filename == spec.filename
-                    and metadata.source_url == str(spec.url)
+                    and metadata.source_url == _source_url(spec)
                     and metadata.sha256 == spec.sha256
                     and (
                         spec.size_bytes is None
@@ -103,3 +103,8 @@ class ArtifactResolver:
             verified=verified,
             path=path if cached else None,
         )
+
+
+def _source_url(spec: object) -> str | None:
+    url = getattr(spec, "url", None)
+    return str(url) if url is not None else None

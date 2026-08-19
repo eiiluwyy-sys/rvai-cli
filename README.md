@@ -53,6 +53,10 @@ rvai run builtin-gemm-int8 --target native
 rvai run builtin-gemm-int8 --target qemu-riscv64
 rvai pull mobilenet-v2-fp32-onnx
 rvai infer mobilenet-v2-fp32-onnx --input path/to/image.jpg
+rvai import-artifact mobilenet-int8 --file path/to/mobilenetv2-12-int8.onnx
+rvai infer mobilenet-int8 --input path/to/image.jpg
+rvai pull qwen-small-int4
+rvai generate qwen-small-int4 --prompt "请简要介绍 RISC-V"
 ```
 
 保存标准化运行记录、生成 Markdown 报告并进行可信比较：
@@ -82,11 +86,16 @@ SSH 密码及其他凭据不得写入运行记录；未来新增认证或 Token 
 延迟、吞吐量及矩阵内存占用的 JSON。若二进制位于其他目录，可通过
 `RVAI_BENCH_BIN` 指定完整路径。其他模型当前仍只支持 `--dry-run`。
 
-`qwen-small-int4` 和 `mobilenet-int8` 当前仅为模型注册条目，仓库中不包含
-对应的 GGUF 或 ONNX 模型文件。`mobilenet-v2-fp32-onnx` 可通过 `rvai pull`
-下载并进行 SHA-256 验证，安装 ONNX extra 后可在 native CPU 上执行单图片、
-batch-one、FP32 ImageNet Top-K 分类。详细边界参见
+`qwen-small-int4` 固定到 Qwen 官方 Qwen2.5-0.5B-Instruct Q4_0 GGUF，
+可通过 `rvai pull` 下载并进行 SHA-256 与大小验证；安装或构建 `llama-cli`
+并配置 `RVAI_LLAMA_CPP_BIN` 后，可通过 `rvai generate` 执行单轮文本生成。
+`mobilenet-v2-fp32-onnx` 同样可通过 `rvai pull` 下载并进行 SHA-256 验证；
+`mobilenet-int8` 使用生产生成的本地 ONNX 文件，通过 `rvai import-artifact`
+校验并原子导入缓存。安装 ONNX extra 后，两者均可在 native CPU 上执行
+单图片、batch-one、ImageNet Top-K 分类。详细边界参见
 [docs/onnx-inference.md](docs/onnx-inference.md)。
+Jupiter 上的 llama.cpp 构建、Generation JSON 字段和复现方法参见
+[docs/llama-cpp-generation.md](docs/llama-cpp-generation.md)。
 
 ## 测试
 

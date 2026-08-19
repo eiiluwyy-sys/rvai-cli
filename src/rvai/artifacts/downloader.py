@@ -176,6 +176,10 @@ class ArtifactDownloader:
         output: BinaryIO,
         timeout_seconds: float,
     ) -> tuple[str, int]:
+        if spec.url is None:
+            raise ArtifactDownloadError(
+                "Artifact has no remote URL and must be imported from a local file"
+            )
         request = urllib.request.Request(
             str(spec.url),
             headers={"User-Agent": "rvai-cli/0.1"},

@@ -15,6 +15,12 @@ own explicit version fields.
   immutable failure evidence, deterministic reports, and verified packaging.
 - Deterministic, class-balanced numeric ImageFolder Manifest preparation with
   image decoding, per-file digests, and cross-split overlap rejection.
+- MobileNetV2 INT8 Manifest activation and native ONNX Runtime inference.
+- Verified atomic import of pre-provisioned local model artifacts.
+- Pinned Qwen2.5 0.5B Q4_0 GGUF artifact and structured `rvai generate`
+  support through a shell-free llama.cpp adapter.
+- Reproducible Milk-V Jupiter llama.cpp b10488 build script with a safe scalar
+  fallback and capability-gated RVV/SpacemiT CPU options.
 
 ### Changed
 
