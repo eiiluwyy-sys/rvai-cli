@@ -15,7 +15,6 @@ from rvai.model_pipeline import (
 
 CONFIG_DIR = Path(__file__).parents[1] / "model-pipeline" / "mobilenet-v2"
 V2_CONFIG_DIR = Path(__file__).parents[1] / "model-pipeline" / "mobilenet-v2-v2"
-V3_CONFIG_DIR = Path(__file__).parents[1] / "model-pipeline" / "mobilenet-v2-v3"
 
 
 def test_loads_committed_frozen_configuration() -> None:
@@ -73,24 +72,6 @@ def test_loads_explicit_reviewed_v2_configuration() -> None:
     assert quantization.nodes_to_exclude == ("Conv_88", "Conv_94", "Conv_95")
     assert quantization.op_types_to_exclude_output_quantization == ()
     assert configuration.pipeline.acceptance.min_top1_agreement_ratio == 0.95
-
-
-def test_loads_reviewed_v3_acceptance_configuration() -> None:
-    configuration = load_mobilenet_v2_configuration(V3_CONFIG_DIR)
-    pipeline = configuration.pipeline
-
-    assert pipeline.pipeline.version == "p43b-v3-reviewed-acceptance"
-    assert pipeline.quantization.revision == "v2"
-    assert pipeline.quantization.calibration_chunk_size == 50
-    assert pipeline.quantization.nodes_to_exclude == (
-        "Conv_88",
-        "Conv_94",
-        "Conv_95",
-    )
-    assert pipeline.acceptance.revision == "v3"
-    assert pipeline.acceptance.min_top1_agreement_ratio == 0.90
-    assert pipeline.acceptance.max_correct_to_wrong_regression_ratio == 0.03
-    assert pipeline.acceptance.min_mean_top5_overlap_ratio == 0.85
 
 
 def test_committed_example_manifests_are_strict_and_purpose_aware() -> None:

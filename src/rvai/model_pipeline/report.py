@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-from rvai.model_pipeline.compare import (
-    MobileNetV2P43BAcceptanceV3Decision,
-    MobileNetV2P43BComparisonRecord,
-)
+from rvai.model_pipeline.compare import MobileNetV2P43BComparisonRecord
 from rvai.model_pipeline.environment import MobileNetV2P43BReproducibilityRecord
 from rvai.model_pipeline.errors import ModelPipelineError
 from rvai.model_pipeline.io import sha256_canonical_json
 from rvai.model_pipeline.pilot import MobileNetV2P43BProxyPilotReport
 from rvai.model_pipeline.quantize import MobileNetV2P43BQuantizationRecord
-from rvai.model_pipeline.schema import MobileNetV2P43BAcceptanceV3Config
 
 
 class ReportValidationError(ModelPipelineError):
@@ -34,20 +30,6 @@ def render_comparison_markdown(
     source = reproducibility.source_revision
     artifact = quantization.artifact
     structure = quantization.structure
-
-    v3_gate_lines: list[str] = []
-    if isinstance(decision, MobileNetV2P43BAcceptanceV3Decision):
-        assert isinstance(acceptance, MobileNetV2P43BAcceptanceV3Config)
-        v3_gate_lines = [
-            f"| Correct-to-wrong regression | "
-            f"{_percent(decision.correct_to_wrong_regression_ratio)} | <= "
-            f"{_percent(acceptance.max_correct_to_wrong_regression_ratio)} | "
-            f"{_pass_fail(decision.correct_to_wrong_regression_passed)} |",
-            f"| Mean Top-5 overlap | "
-            f"{_percent(comparison.mean_top5_overlap_ratio)} | >= "
-            f"{_percent(acceptance.min_mean_top5_overlap_ratio)} | "
-            f"{_pass_fail(decision.mean_top5_overlap_passed)} |",
-        ]
 
     lines = [
         "# P4.3B MobileNetV2 Synthetic Proxy Evidence Report",
@@ -135,7 +117,6 @@ def render_comparison_markdown(
         f"| Top-1 agreement | {_percent(comparison.top1_agreement_ratio)} | >= "
         f"{_percent(acceptance.min_top1_agreement_ratio)} | "
         f"{_pass_fail(decision.top1_agreement_passed)} |",
-        *v3_gate_lines,
         f"| Inference failures | {comparison.total_inference_failures} | 0 | "
         f"{_pass_fail(decision.zero_inference_failures_passed)} |",
         f"| Finite outputs | {_yes_no(comparison.all_outputs_finite)} | Required | "

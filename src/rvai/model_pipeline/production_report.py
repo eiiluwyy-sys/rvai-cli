@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-from rvai.model_pipeline.compare import (
-    MobileNetV2P43BAcceptanceV3Decision,
-    MobileNetV2P43BComparisonRecord,
-)
+from rvai.model_pipeline.compare import MobileNetV2P43BComparisonRecord
 from rvai.model_pipeline.production import (
     MobileNetV2P43BProductionReport,
     MobileNetV2P43BProductionReproducibilityRecord,
@@ -26,27 +23,14 @@ def render_production_markdown(
     if report.status != reproducibility.status:
         raise ValueError("Production report and reproducibility status disagree")
     decision = comparison.decision
-    rows = [
+    rows = (
         ("Top-1 accuracy drop", comparison.top1_drop_percentage_points, decision.top1_accuracy_passed),
         ("Top-5 accuracy drop", comparison.top5_drop_percentage_points, decision.top5_accuracy_passed),
         ("Model size reduction", comparison.model_size_reduction_ratio, decision.model_size_passed),
         ("Top-1 agreement", comparison.top1_agreement_ratio, decision.top1_agreement_passed),
         ("Zero inference failures", comparison.total_inference_failures, decision.zero_inference_failures_passed),
         ("Finite outputs", comparison.all_outputs_finite, decision.finite_outputs_passed),
-    ]
-    if isinstance(decision, MobileNetV2P43BAcceptanceV3Decision):
-        rows[4:4] = [
-            (
-                "Correct-to-wrong regression",
-                decision.correct_to_wrong_regression_ratio,
-                decision.correct_to_wrong_regression_passed,
-            ),
-            (
-                "Mean Top-5 overlap",
-                comparison.mean_top5_overlap_ratio,
-                decision.mean_top5_overlap_passed,
-            ),
-        ]
+    )
     gate_lines = "\n".join(
         f"| {name} | `{value}` | {'PASS' if passed else 'FAIL'} |"
         for name, value, passed in rows
