@@ -11,6 +11,7 @@ from rvai.model_pipeline.evaluate import MobileNetV2P43BEvaluationRecord
 from rvai.model_pipeline.io import sha256_canonical_json
 from rvai.model_pipeline.schema import (
     MobileNetV2P43BAcceptanceConfig,
+    MobileNetV2P43BAcceptanceV3Config,
     Sha256Digest,
     StrictModel,
 )
@@ -46,6 +47,38 @@ class MobileNetV2P43BAcceptanceDecision(StrictModel):
         return self
 
 
+class MobileNetV2P43BAcceptanceV3Decision(StrictModel):
+    """Decision and observed regression evidence for every v3 gate."""
+
+    top1_accuracy_passed: bool
+    top5_accuracy_passed: bool
+    model_size_passed: bool
+    top1_agreement_passed: bool
+    correct_to_wrong_regression_count: NonNegativeInt
+    correct_to_wrong_regression_ratio: float = Field(ge=0.0, le=1.0)
+    correct_to_wrong_regression_passed: bool
+    mean_top5_overlap_passed: bool
+    zero_inference_failures_passed: bool
+    finite_outputs_passed: bool
+    overall_passed: bool
+
+    @model_validator(mode="after")
+    def overall_matches_gates(self) -> "MobileNetV2P43BAcceptanceV3Decision":
+        gates = (
+            self.top1_accuracy_passed,
+            self.top5_accuracy_passed,
+            self.model_size_passed,
+            self.top1_agreement_passed,
+            self.correct_to_wrong_regression_passed,
+            self.mean_top5_overlap_passed,
+            self.zero_inference_failures_passed,
+            self.finite_outputs_passed,
+        )
+        if self.overall_passed != all(gates):
+            raise ValueError("overall_passed must equal all v3 gates")
+        return self
+
+
 class MobileNetV2P43BComparisonRecord(StrictModel):
     """Deterministic FP32-to-INT8 comparison and acceptance evidence."""
 
@@ -68,14 +101,30 @@ class MobileNetV2P43BComparisonRecord(StrictModel):
     mean_top5_overlap_ratio: float = Field(ge=0.0, le=1.0)
     total_inference_failures: NonNegativeInt
     all_outputs_finite: bool
-    acceptance: MobileNetV2P43BAcceptanceConfig
-    decision: MobileNetV2P43BAcceptanceDecision
+    acceptance: MobileNetV2P43BAcceptanceConfig | MobileNetV2P43BAcceptanceV3Config
+    decision: MobileNetV2P43BAcceptanceDecision | MobileNetV2P43BAcceptanceV3Decision
+
+    @model_validator(mode="after")
+    def acceptance_matches_decision(self) -> "MobileNetV2P43BComparisonRecord":
+        v3_acceptance = isinstance(self.acceptance, MobileNetV2P43BAcceptanceV3Config)
+        v3_decision = isinstance(self.decision, MobileNetV2P43BAcceptanceV3Decision)
+        if v3_acceptance != v3_decision:
+            raise ValueError("acceptance and decision revisions must match")
+        if v3_decision:
+            assert isinstance(self.decision, MobileNetV2P43BAcceptanceV3Decision)
+            if self.decision.correct_to_wrong_regression_count > self.sample_count:
+                raise ValueError("regression count exceeds compared samples")
+            if self.decision.correct_to_wrong_regression_ratio != (
+                self.decision.correct_to_wrong_regression_count / self.sample_count
+            ):
+                raise ValueError("regression ratio does not match its count")
+        return self
 
 
 def compare_evaluations(
     fp32: MobileNetV2P43BEvaluationRecord,
     int8: MobileNetV2P43BEvaluationRecord,
-    acceptance: MobileNetV2P43BAcceptanceConfig,
+    acceptance: MobileNetV2P43BAcceptanceConfig | MobileNetV2P43BAcceptanceV3Config,
 ) -> MobileNetV2P43BComparisonRecord:
     """Compare paired manifest-order results and evaluate every frozen gate."""
 
@@ -83,6 +132,7 @@ def compare_evaluations(
     sample_count = len(fp32.samples)
     top1_agreement_count = 0
     top5_overlap_count = 0
+    correct_to_wrong_regression_count = 0
     for fp32_sample, int8_sample in zip(fp32.samples, int8.samples, strict=True):
         if (
             fp32_sample.succeeded
@@ -96,6 +146,8 @@ def compare_evaluations(
         ):
             overlap = set(fp32_sample.top5_classes) & set(int8_sample.top5_classes)
             top5_overlap_count += len(overlap)
+        if fp32_sample.top1_correct and not int8_sample.top1_correct:
+            correct_to_wrong_regression_count += 1
 
     fp32_top1 = fp32.summary.top1_accuracy_ratio
     int8_top1 = int8.summary.top1_accuracy_ratio
@@ -116,11 +168,14 @@ def compare_evaluations(
     )
     agreement_ratio = top1_agreement_count / sample_count
     mean_top5_overlap = top5_overlap_count / (5 * sample_count)
+    correct_to_wrong_regression_ratio = (
+        correct_to_wrong_regression_count / sample_count
+    )
     total_failures = (
         fp32.summary.inference_failures + int8.summary.inference_failures
     )
     all_finite = fp32.summary.all_outputs_finite and int8.summary.all_outputs_finite
-    gates = (
+    common_gates = (
         top1_drop <= acceptance.max_top1_drop_percentage_points,
         top5_drop <= acceptance.max_top5_drop_percentage_points,
         size_reduction >= acceptance.min_model_size_reduction_ratio,
@@ -128,15 +183,37 @@ def compare_evaluations(
         total_failures == 0 if acceptance.require_zero_inference_failures else True,
         all_finite if acceptance.require_finite_outputs else True,
     )
-    decision = MobileNetV2P43BAcceptanceDecision(
-        top1_accuracy_passed=gates[0],
-        top5_accuracy_passed=gates[1],
-        model_size_passed=gates[2],
-        top1_agreement_passed=gates[3],
-        zero_inference_failures_passed=gates[4],
-        finite_outputs_passed=gates[5],
-        overall_passed=all(gates),
-    )
+    if isinstance(acceptance, MobileNetV2P43BAcceptanceV3Config):
+        v3_gates = (
+            correct_to_wrong_regression_ratio
+            <= acceptance.max_correct_to_wrong_regression_ratio,
+            mean_top5_overlap >= acceptance.min_mean_top5_overlap_ratio,
+        )
+        decision: MobileNetV2P43BAcceptanceDecision | MobileNetV2P43BAcceptanceV3Decision = (
+            MobileNetV2P43BAcceptanceV3Decision(
+                top1_accuracy_passed=common_gates[0],
+                top5_accuracy_passed=common_gates[1],
+                model_size_passed=common_gates[2],
+                top1_agreement_passed=common_gates[3],
+                correct_to_wrong_regression_count=correct_to_wrong_regression_count,
+                correct_to_wrong_regression_ratio=correct_to_wrong_regression_ratio,
+                correct_to_wrong_regression_passed=v3_gates[0],
+                mean_top5_overlap_passed=v3_gates[1],
+                zero_inference_failures_passed=common_gates[4],
+                finite_outputs_passed=common_gates[5],
+                overall_passed=all(common_gates + v3_gates),
+            )
+        )
+    else:
+        decision = MobileNetV2P43BAcceptanceDecision(
+            top1_accuracy_passed=common_gates[0],
+            top5_accuracy_passed=common_gates[1],
+            model_size_passed=common_gates[2],
+            top1_agreement_passed=common_gates[3],
+            zero_inference_failures_passed=common_gates[4],
+            finite_outputs_passed=common_gates[5],
+            overall_passed=all(common_gates),
+        )
     return MobileNetV2P43BComparisonRecord(
         fp32_evaluation_sha256=sha256_canonical_json(fp32),
         int8_evaluation_sha256=sha256_canonical_json(int8),

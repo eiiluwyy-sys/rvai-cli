@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from rvai.model_pipeline.schema import (
+    MobileNetV2P43BAcceptanceV3Config,
     MobileNetV2P43BDatasetManifest,
     MobileNetV2P43BPipelineConfig,
     MobileNetV2P43BQuantizationV2Config,
@@ -230,3 +231,21 @@ def test_v2_quantization_requires_explicit_calibration_and_exclusions() -> None:
                 "nodes_to_exclude": ["Conv_88", "Conv_88"],
             }
         )
+
+
+def test_v3_acceptance_thresholds_are_frozen_and_explicit() -> None:
+    acceptance = MobileNetV2P43BAcceptanceV3Config(
+        revision="v3",
+        max_top1_drop_percentage_points=1.0,
+        max_top5_drop_percentage_points=1.0,
+        min_model_size_reduction_ratio=0.50,
+        min_top1_agreement_ratio=0.90,
+        max_correct_to_wrong_regression_ratio=0.03,
+        min_mean_top5_overlap_ratio=0.85,
+        require_zero_inference_failures=True,
+        require_finite_outputs=True,
+    )
+
+    assert acceptance.min_top1_agreement_ratio == 0.90
+    assert acceptance.max_correct_to_wrong_regression_ratio == 0.03
+    assert acceptance.min_mean_top5_overlap_ratio == 0.85
